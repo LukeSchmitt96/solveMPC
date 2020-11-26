@@ -24,5 +24,13 @@ add_compile_options(
 )
 
 #solveMPC.cpp
-add_executable(solveMPC.cpp src/solveMPC.cpp)
+add_executable(
+    solveMPC.cpp 
+    src/solveMPC.cpp 
+    src/ModelPredictiveControlAPI.cpp 
+    include/ModelPredictiveControlAPI.h
+    src/SerialPort.cpp
+    include/SerialPort.h
+)
+
 target_link_libraries(solveMPC.cpp OsqpEigen::OsqpEigen)
