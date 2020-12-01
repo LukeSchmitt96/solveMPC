@@ -283,6 +283,7 @@ public:
         Eigen::Matrix<double, 1, mpcWindow> t;
         double t0, dt;
 
+        //  number of decisiona vars and constraints
         int n_variables;
         int n_constraints;  
     
@@ -305,5 +306,4 @@ public:
          * @param num_in number of samples to generate 
          */
         Eigen::Matrix<double, 1, mpcWindow> linspace(double, double, int);
-    // private:
 };

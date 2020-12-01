@@ -42,8 +42,12 @@ public:
      * @param dt            pointer to time diff
      * 
      * @param X             pointer to state vector
+     * 
+     * @returns             status message:
+     *                          0 if read successfully
+     *                         -1 if no message was read
      */                           
-    void readPort(double, Eigen::Vector4d &);
+    int readPort(double, Eigen::Vector4d &);
 
     /**
      * write data to port
@@ -51,6 +55,11 @@ public:
      * @param U             control signal
      */
     void writePort(Eigen::Vector4d);
+
+    /**
+     * send init byte to arduino
+     */
+    void sendInit();
 
     int serial_port;
     struct termios tty;

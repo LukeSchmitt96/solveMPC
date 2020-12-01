@@ -26,13 +26,13 @@ int main(int argc, char** argv)
     // instantiate the solver
     OsqpEigen::Solver solver;
 
-    // settings
+    // solver settings
     solver.settings()->setVerbosity(false);
     solver.settings()->setWarmStart(true);
 
     // set up the QP solver
-    solver.data()->setNumberOfVariables(N_S*mpcWindow);
-    solver.data()->setNumberOfConstraints(2*mpcWindow);
+    solver.data()->setNumberOfVariables(mpc.n_variables);
+    solver.data()->setNumberOfConstraints(mpc.n_constraints);
     if(!solver.data()->setHessianMatrix(mpc.H)) return 1;
     if(!solver.data()->setGradient(mpc.f)) return 1;
     if(!solver.data()->setLinearConstraintsMatrix(mpc.Gbar)) return 1;
@@ -51,8 +51,11 @@ int main(int argc, char** argv)
     
     // set serial read variables
     int num_bytes; 
-    char read_buf [32];
+    char read_buf [64];
 
+    // while(true){
+    //     sp.sendInit();
+    // }
 
     int count = 0;
 
@@ -63,34 +66,48 @@ int main(int argc, char** argv)
     std::cout << "----------------------------------------------------" << std::endl;
     std::cout << std::endl;
 
+
     while(true)
     {
 
         // get state by reading from serial
-        sp.readPort(mpc.dt, mpc.X);
+        if(sp.readPort(mpc.dt, mpc.X) > 0)  // check for valid message
+        {
+            mpc.t0 += mpc.dt;
 
-        mpc.t0 += mpc.dt;
+            // update reference trajectory
+            mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000*(mpcWindow-1), mpcWindow);
+            
+            mpc.updateRef(mpc.ref, mpc.t);
 
-        // update reference trajectory
-        mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000*(mpcWindow-1), mpcWindow);
+            // update gradient and constraints
+            mpc.setF(mpc.f, mpc.Fu, mpc.Fr, mpc.Fx, mpc.X, mpc.ref);
+
+            if(!solver.updateGradient(mpc.f)) return 1;
+            if(!solver.updateUpperBound(mpc.W+mpc.Sbar*mpc.X)) return 1;
+
+            // solve the QP problem
+            if(!solver.solve()) return 1;
+            
+            // get the controller input
+            QPSolution = solver.getSolution();
+
+            // TODO: add gain to the U and the X term
+            // TODO: add ff term, just control signal propogated through the system
+
+            U = QPSolution.block<N_C, 1>(0, 0);
+
+            // Xact = mpc.Ad*mpc.X + mpc.Bd*U
+
+            sp.writePort(U);
+
+            count++;
+        }
+        else
+        {
+            sp.writePort(U);
+        }
         
-        mpc.updateRef(mpc.ref, mpc.t);
-
-        // update gradient and constraints
-        mpc.setF(mpc.f, mpc.Fu, mpc.Fr, mpc.Fx, mpc.X, mpc.ref);
-
-        if(!solver.updateGradient(mpc.f)) return 1;
-        if(!solver.updateUpperBound(mpc.W+mpc.Sbar*mpc.X)) return 1;
-
-        // solve the QP problem
-        if(!solver.solve()) return 1;
-        
-        // get the controller input
-        QPSolution = solver.getSolution();
-
-        sp.writePort(QPSolution.block<N_C, 1>(0, 0));
-
-        count++;
     }
 
     sp.~SerialPort();

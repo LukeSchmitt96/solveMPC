@@ -47,18 +47,16 @@ SerialPort::SerialPort(const char* port_name)
         printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
     }
 
-    tty.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
-    tty.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
-    tty.c_cflag &= ~CSIZE; // Clear all the size bits, then use one of the statements below
-    tty.c_cflag |= CS8; // 8 bits per byte (most common)
-    tty.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
-    tty.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
-
-    tty.c_lflag &= ~ECHO; // Disable echo
-    tty.c_lflag &= ~ECHOE; // Disable erasure
-    tty.c_lflag &= ~ECHONL; // Disable new-line echo
-    tty.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
-
+    tty.c_cflag &= ~PARENB;         // Clear parity bit, disabling parity (most common)
+    tty.c_cflag &= ~CSTOPB;         // Clear stop field, only one stop bit used in communication (most common)
+    tty.c_cflag &= ~CSIZE;          // Clear all the size bits, then use one of the statements below
+    tty.c_cflag |= CS8;             // 8 bits per byte (most common)
+    tty.c_cflag &= ~CRTSCTS;        // Disable RTS/CTS hardware flow control (most common)
+    tty.c_cflag |= CREAD | CLOCAL;  // Turn on READ & ignore ctrl lines (CLOCAL = 1)
+    tty.c_lflag &= ~ECHO;           // Disable echo
+    tty.c_lflag &= ~ECHOE;          // Disable erasure
+    tty.c_lflag &= ~ECHONL;         // Disable new-line echo
+    tty.c_lflag &= ~ISIG;           // Disable interpretation of INTR, QUIT and SUSP
     tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
     tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
     tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
@@ -67,7 +65,7 @@ SerialPort::SerialPort(const char* port_name)
     // tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars (0x004) in output (NOT PRESENT IN LINUX)
 
     tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
-    tty.c_cc[VMIN] = 0;
+    tty.c_cc[VMIN] = 30;
 
     // Set in/out baud rate
     cfsetispeed(&tty, B57600);
@@ -104,7 +102,7 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
     double temp;
 
     ptr = strtok(read_buf, " ");  // takes a list of delimiters
-    while(index < 5)
+    while(index < 4)
     {
         temp = atof(ptr);
         if (temp != 0) 
@@ -115,7 +113,7 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
         ptr = strtok(NULL, " ");  // takes a list of delimiters
     }
     
-    dt = ref[0];
+    dt   = ref[0];
 
     X(0) = ref[1];
     X(1) = ref[2];
@@ -124,24 +122,35 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
 }
 
 
-void SerialPort::readPort(double            dt,
+int SerialPort::readPort(double            dt,
                           Eigen::Vector4d   &X)
 {
     memset(&read_buf, '\0', sizeof(read_buf));
     num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
 
-    if (num_bytes < 0)
+    // if (!(num_bytes < 0))
+    if (num_bytes > 20)         // TODO: just 10 for now, tune this number for best performance
     {
-        printf("Error reading: %s.", strerror(errno));
+        printf("Read %i bytes. Received message: %s\n", num_bytes, read_buf);
+        getDataFromSerial(dt, X, read_buf);
+        return 0;
     } 
-    
-    printf("Read %i bytes. Received message: %s\n", num_bytes, read_buf);
-
-    getDataFromSerial(dt, X, read_buf);
+    else
+    {
+        printf("Problem reading from serial, reusing last control signal.\n");
+        return -1;
+    }
 }
 
 
 void SerialPort::writePort(Eigen::Vector4d U)
 {
     write(serial_port, U.data(), sizeof(U));
+}
+
+
+void SerialPort::sendInit()
+{
+    char* boot_msg = "R";
+    write(serial_port, boot_msg, sizeof(boot_msg));
 }
