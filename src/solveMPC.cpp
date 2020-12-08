@@ -17,6 +17,12 @@ using namespace std::chrono;
 
 int main(int argc, char** argv)
 {
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "[solveMPC]\tStarting MPC solver." << std::endl;
+    std::cout << std::endl;;
+    std::cout << std::endl;
+
     // instantiate mpc api object
     ModelPredictiveControlAPI mpc;
 
@@ -61,6 +67,7 @@ int main(int argc, char** argv)
 
     // enter loop
     std::cout << std::endl;
+    std::cout << std::endl;
     std::cout << "----------------------------------------------------" << std::endl;
     std::cout << "-------------- Entering control loop. --------------" << std::endl;
     std::cout << "----------------------------------------------------" << std::endl;
@@ -71,18 +78,18 @@ int main(int argc, char** argv)
     {
 
         // get state by reading from serial
-        if(sp.readPort(mpc.dt, mpc.X) > 0)  // check for valid message
+        if(sp.readPort(mpc.dt, mpc.X))  // check for valid message
         {
+            // start = high_resolution_clock::now();
+
             mpc.t0 += mpc.dt;
 
             // update reference trajectory
-            mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000*(mpcWindow-1), mpcWindow);
-            
+            mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000.0*(mpcWindow-1), mpcWindow);
             mpc.updateRef(mpc.ref, mpc.t);
 
             // update gradient and constraints
             mpc.setF(mpc.f, mpc.Fu, mpc.Fr, mpc.Fx, mpc.X, mpc.ref);
-
             if(!solver.updateGradient(mpc.f)) return 1;
             if(!solver.updateUpperBound(mpc.W+mpc.Sbar*mpc.X)) return 1;
 
@@ -99,9 +106,15 @@ int main(int argc, char** argv)
 
             // Xact = mpc.Ad*mpc.X + mpc.Bd*U
 
+            std::cout << "[solveMPC]\t" << "Control output: " << U.transpose() << std::endl;
+
             sp.writePort(U);
 
             count++;
+
+            // stop = high_resolution_clock::now();
+            
+            // std::cout << "[solveMPC]\t" << "Cycle time: " << duration_cast<milliseconds>(stop - start).count() << "ms" << std::endl;
         }
         else
         {

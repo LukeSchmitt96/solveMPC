@@ -14,28 +14,27 @@
 
 SerialPort::SerialPort(const char* port_name)
 {
-    std::cout << "\n[INFO]\t Attempting connection to serial port \""
+    std::cout << "[SerialPort]\t Attempting connection to serial port "
               << port_name
-              << "\".\n" << std::endl;
-    // printf("\n[INFO]\t Attempting connection to serial port \"/dev/tty/USB0\".\n");
-    // attempt to open serial port
+              << "\"." << std::endl;
+
     int attempt = 0;
     serial_port = open(port_name, O_RDWR);
     while(serial_port < 0) 
     {
-        if(attempt>4)
-        {
-            printf("[Error]\t Could not open serial port after %d attempts. Check connection. Shutting down...\n",attempt);
-            return;
-        }
+        // if(attempt>4)
+        // {
+        //     printf("[SerialPort]\t Could not open serial port after %d attempts. Check connection. Shutting down...",attempt);
+        //     return;
+        // }
 
-        printf("[INFO]\t Error %i from open: %s. Reattempting connection...\n", errno, strerror(errno));
+        printf("[SerialPort]\t Error %i from open: %s. Reattempting connection...", errno, strerror(errno));
         sleep(1);
         serial_port = open(port_name, O_RDWR);
         attempt++;
     }
     
-    printf("[INFO]\t Serial port opened successfully.\n");
+    printf("[SerialPort]\t Serial port opened successfully.");
     
      
     // Read in existing settings, and handle any error
@@ -44,7 +43,7 @@ SerialPort::SerialPort(const char* port_name)
     // is undefined
     if(tcgetattr(serial_port, &tty) != 0)
     {
-        printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+        printf("Error %i from tcgetattr: %s", errno, strerror(errno));
     }
 
     tty.c_cflag &= ~PARENB;         // Clear parity bit, disabling parity (most common)
@@ -74,14 +73,14 @@ SerialPort::SerialPort(const char* port_name)
     // Save tty settings, also checking for error
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) 
     {
-        printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+        printf("Error %i from tcsetattr: %s", errno, strerror(errno));
     }
 }
 
 
 SerialPort::~SerialPort()
 {
-    printf("[INFO]\t Destructing Serial Port Communication Object.");
+    printf("[SerialPort]\t\t Destructing Serial Port Communication Object.");
     close(serial_port);
 }
 
@@ -102,7 +101,7 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
     double temp;
 
     ptr = strtok(read_buf, " ");  // takes a list of delimiters
-    while(index < 4)
+    while(index < 5)
     {
         temp = atof(ptr);
         if (temp != 0) 
@@ -122,23 +121,23 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
 }
 
 
-int SerialPort::readPort(double            dt,
+bool SerialPort::readPort(double            dt,
                           Eigen::Vector4d   &X)
 {
     memset(&read_buf, '\0', sizeof(read_buf));
     num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
 
     // if (!(num_bytes < 0))
-    if (num_bytes > 20)         // TODO: just 10 for now, tune this number for best performance
+    if (num_bytes > 20)         // TODO: just 20 for now, tune this number for best performance
     {
-        printf("Read %i bytes. Received message: %s\n", num_bytes, read_buf);
+        printf("[SerialPort]\tRead %i bytes. Received message: %s", num_bytes, read_buf);
         getDataFromSerial(dt, X, read_buf);
-        return 0;
+        return true;
     } 
     else
     {
-        printf("Problem reading from serial, reusing last control signal.\n");
-        return -1;
+        printf("[SerialPort]\tProblem reading from serial, reusing last control signal.");
+        return false;
     }
 }
 

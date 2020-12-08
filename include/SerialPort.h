@@ -47,7 +47,7 @@ public:
      *                          0 if read successfully
      *                         -1 if no message was read
      */                           
-    int readPort(double, Eigen::Vector4d &);
+    bool readPort(double, Eigen::Vector4d &);
 
     /**
      * write data to port
@@ -66,6 +66,6 @@ public:
 
     // set serial read variables
     int num_bytes; 
-    char read_buf [32];
+    char read_buf [64];
 
 };

@@ -236,74 +236,122 @@ public:
      * @param t         time vector corresponding to reference
      */
     void updateRef(Eigen::Matrix<double, N_S, mpcWindow>                            &, 
-                  Eigen::Matrix<double, 1, mpcWindow>                               );
+                   Eigen::Matrix<double, 1, mpcWindow>                              );
 
-        // system matrices
-        Eigen::Matrix<double, N_S, N_S>                     Ad;
-        Eigen::Matrix<double, N_S, N_C>                     Bd;
-        Eigen::Matrix<double, N_O, N_S>                     Cd;
-        Eigen::Matrix<double, N_O, N_C>                     Dd;
-        Eigen::Matrix<double, 2, N_C>                       G;
-        Eigen::Matrix<double, 2, N_C>                       S; 
+    /**
+     * linearizes nonlinear model into a linear model about X
+     * 
+     * @param ts        sampling time
+     * 
+     * @param U_LQR     control from LQR
+     * 
+     * @param X         state to linearize about
+     */
+    void linearizeABCD(double ts,
+                       double U,
+                       Eigen::Vector4d X);
 
-        // constraint matrices
-        Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;
-        Eigen::Matrix<double, 2, 1>                         W0; 
-        Eigen::Matrix<double, 2*mpcWindow, 1>               W;
-        Eigen::SparseMatrix<double>                         Gbar;    
+    /**
+     * converts a continuous time system to discrete time
+     * 
+     * @param ts        sampling time
+     * 
+     * @param Ad        pointer to Ad
+     * 
+     * @param Bd        pointer to Bd
+     * 
+     * @param Cd        pointer to Cd
+     * 
+     * @param Dd        pointer to Dd
+     * 
+     * @param A         system matrix A
+     * 
+     * @param B         system matrix B
+     * 
+     * @param C         system matrix C
+     * 
+     * @param D         system matrix D
+     */
+    void c2d(double                                                                 ,
+             Eigen::Matrix<double, N_S, N_S>                                        &,
+             Eigen::Matrix<double, N_S, 1>                                          &,
+             Eigen::Matrix<double, N_O, N_S>                                        &,
+             Eigen::Matrix<double, N_O, 1>                                          &,
+             Eigen::Matrix<double, N_S, N_S>                                        ,
+             Eigen::Matrix<double, N_S, 1>                                          ,
+             Eigen::Matrix<double, N_O, N_S>                                        ,
+             Eigen::Matrix<double, N_O, 1>                                          );
 
-        // weight matrices
-        Eigen::Matrix<double, N_S, N_S>                     Q;    
-        Eigen::Matrix<double, N_C, N_C>                     R;    
-        Eigen::Matrix<double, 1,   1>                       RD;
-        Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> Qbar;    
-        Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Rbar;
-        Eigen::Matrix<double, 1*mpcWindow,   1*mpcWindow>   RbarD;        
+    // system matrices
+    Eigen::Matrix<double, N_S, N_S>                     A;
+    Eigen::Matrix<double, N_S, 1>                       B;
+    Eigen::Matrix<double, N_O, N_S>                     C;
+    Eigen::Matrix<double, N_O, 1>                       D;
+    Eigen::Matrix<double, N_S, N_S>                     Ad;
+    Eigen::Matrix<double, N_S, N_C>                     Bd;
+    Eigen::Matrix<double, N_O, N_S>                     Cd;
+    Eigen::Matrix<double, N_O, N_C>                     Dd;
+    Eigen::Matrix<double, 2, N_C>                       G;
+    Eigen::Matrix<double, 2, N_C>                       S; 
 
-        // Sx, Su, Su1, CAB matrices
-        Eigen::Matrix<double, N_S*mpcWindow, N_S>           Sx;
-        Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su;
-        Eigen::Matrix<double, N_C*mpcWindow, 1>             Su1;
-        Eigen::Matrix<double, N_S*mpcWindow, N_S>           CAB;
+    // constraint matrices
+    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;
+    Eigen::Matrix<double, 2, 1>                         W0; 
+    Eigen::Matrix<double, 2*mpcWindow, 1>               W;
+    Eigen::SparseMatrix<double>                         Gbar;    
 
-        // state and the reference signal
-        Eigen::Matrix<double, N_S, 1>                       X;
-        Eigen::Matrix<double, N_O, mpcWindow>               ref;
+    // weight matrices
+    Eigen::Matrix<double, N_S, N_S>                     Q;    
+    Eigen::Matrix<double, N_C, N_C>                     R;    
+    Eigen::Matrix<double, 1,   1>                       RD;
+    Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> Qbar;    
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Rbar;
+    Eigen::Matrix<double, 1*mpcWindow,   1*mpcWindow>   RbarD;        
 
-        // QP problem matrices and vectors
-        Eigen::SparseMatrix<double>                         H;
-        Eigen::Matrix<double, N_C*mpcWindow, 1>             Fu;
-        Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Fr;
-        Eigen::Matrix<double, N_C*mpcWindow, N_S>           Fx;
-        Eigen::Matrix<double, N_C*mpcWindow, 1>             f;
-        Eigen::Matrix<double, 2*mpcWindow, 1>               lb;
-        Eigen::Matrix<double, 2*mpcWindow, 1>               ub;    
+    // Sx, Su, Su1, CAB matrices
+    Eigen::Matrix<double, N_S*mpcWindow, N_S>           Sx;
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su;
+    Eigen::Matrix<double, N_C*mpcWindow, 1>             Su1;
+    Eigen::Matrix<double, N_S*mpcWindow, N_S>           CAB;
 
-        // timing variables
-        Eigen::Matrix<double, 1, mpcWindow> t;
-        double t0, dt;
+    // state and the reference signal
+    Eigen::Matrix<double, N_S, 1>                       X;
+    Eigen::Matrix<double, N_O, mpcWindow>               ref;
 
-        //  number of decisiona vars and constraints
-        int n_variables;
-        int n_constraints;  
-    
-        /**
-         * Create a block diagonal matrix in the same style as MATLAB
-         * 
-         * @param a matrix block to be iterated
-         * 
-         * @param count number of times to iterate block a 
-         */
-        Eigen::MatrixXd blkdiag(const Eigen::MatrixXd &, int);
+    // QP problem matrices and vectors
+    Eigen::SparseMatrix<double>                         H;
+    Eigen::Matrix<double, N_C*mpcWindow, 1>             Fu;
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Fr;
+    Eigen::Matrix<double, N_C*mpcWindow, N_S>           Fx;
+    Eigen::Matrix<double, N_C*mpcWindow, 1>             f;
+    Eigen::Matrix<double, 2*mpcWindow, 1>               lb;
+    Eigen::Matrix<double, 2*mpcWindow, 1>               ub;    
 
-        /**
-         * Create an evenly-spaced Eigen vector in the same style as MATLAB
-         * 
-         * @param start_in starting value of sequence
-         * 
-         * @param end_in end value of the sequence
-         * 
-         * @param num_in number of samples to generate 
-         */
-        Eigen::Matrix<double, 1, mpcWindow> linspace(double, double, int);
+    // timing variables
+    Eigen::Matrix<double, 1, mpcWindow> t;
+    double t0, dt;
+
+    //  number of decisiona vars and constraints
+    int n_variables;
+    int n_constraints;  
+
+    /**
+     * Create a block diagonal matrix in the same style as MATLAB
+     * 
+     * @param a matrix block to be iterated
+     * 
+     * @param count number of times to iterate block a 
+     */
+    Eigen::MatrixXd blkdiag(const Eigen::MatrixXd &, int);
+
+    /**
+     * Create an evenly-spaced Eigen vector in the same style as MATLAB
+     * 
+     * @param start_in starting value of sequence
+     * 
+     * @param end_in end value of the sequence
+     * 
+     * @param num_in number of samples to generate 
+     */
+    Eigen::Matrix<double, 1, mpcWindow> linspace(double, double, int);
 };
