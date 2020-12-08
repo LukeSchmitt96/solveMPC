@@ -264,11 +264,11 @@ Eigen::Matrix<double, 1, mpcWindow> ModelPredictiveControlAPI::linspace(double s
 
     double delta = (end - start) / (num - 1);
 
-    for(int i=0; i < num-1; ++i)
+    for(int i=0; i < num; ++i)
     {
         linspaced(0,i) = start + delta * i;
     }
-    linspaced(0,num-1) = end;   // I want to ensure that start and end
+    //linspaced(0,num-1) = end;   // I want to ensure that start and end
                                 // are exactly the same as the input
         
     return linspaced;
