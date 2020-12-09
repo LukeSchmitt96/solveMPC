@@ -95,7 +95,10 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
     Su1 = Eigen::MatrixXd::Zero(Su1.rows(), Su1.cols());
     CAB = Eigen::MatrixXd::Zero(CAB.rows(), CAB.cols());
 
-    // compute Sx and CAB
+    // compute Sx and CAB --- Sx = [Sx;Cd*Ad^ii];
+    // CAB = [CAB;CAiB]; 
+    /*CAiB = CAiB + Cd * Ad ^ (ii - 1) * Bd;
+    AiB = AiB + Ad ^ (ii - 1) * Bd;*/
     for(int i=0; i<mpcWindow; i++)
     {
         Sx.block<N_S, N_O>(i*N_O,0)  = Cd*Ad.pow(i+1);
@@ -115,7 +118,8 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
 
     Su1 = Su.col(0);
 
-    // // compute G
+    // // compute G  --  Su(4*ii-3:4*ii,4*jj-3:4*jj) = CAB(4*(ii-jj)+1:4*(ii-jj)+4,:);
+    // G(ii, 4 * jj - 3:4 * jj) = -K * (eye(4) - AB(4 * (ii - jj) + 1:4 * (ii - jj) + 4, : ));
     // for(int i=0; i<mpcWindow; i++)
     // {
     //     for(int j=0; j<i; j++)

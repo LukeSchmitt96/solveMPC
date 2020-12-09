@@ -134,14 +134,18 @@ public:
     Eigen::Matrix<double, N_S, N_C>                     Bd;
     Eigen::Matrix<double, N_O, N_S>                     Cd;
     Eigen::Matrix<double, N_O, N_C>                     Dd;
+
+    // G and S are Wrong Sizes 
     Eigen::Matrix<double, 2, N_C>                       G;
     Eigen::Matrix<double, 2, N_C>                       S; 
+    //
+
 
     // constraint matrices
-    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;
-    Eigen::Matrix<double, 2, 1>                         W0; 
+    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;  // What is Sbar? 
+    Eigen::Matrix<double, 2, 1>                         W0; // W0 = ones(2*N,1)*255; I think you have it as W? 
     Eigen::Matrix<double, 2*mpcWindow, 1>               W;
-    Eigen::SparseMatrix<double>                         Gbar;    
+    Eigen::SparseMatrix<double>                         Gbar;   // Not a matrix 
 
     // weight matrices
     Eigen::Matrix<double, N_S, N_S>                     Q;    
