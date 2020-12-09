@@ -86,7 +86,7 @@ public:
      */
     void setQ_R_RD(Eigen::Matrix<double,N_S,N_S>                                    &,
                    Eigen::Matrix<double,N_C,N_C>                                    &,
-                   Eigen::Matrix<double,1,1>                                        &,
+                   Eigen::Matrix<double,N_C,N_C>                                    &,
                    double                                                            ,
                    double                                                            ,
                    double                                                            );
@@ -108,10 +108,10 @@ public:
      */
     void computeQbar_Rbar_RbarD(Eigen::Matrix<double,N_S*mpcWindow,N_S*mpcWindow>   &,
                                 Eigen::Matrix<double,N_C*mpcWindow,N_C*mpcWindow>   &,
-                                Eigen::Matrix<double,1*mpcWindow,1*mpcWindow>       &,
+                                Eigen::Matrix<double,N_C*mpcWindow,N_C*mpcWindow>   &,
                                 Eigen::Matrix<double,N_S,N_S>                       ,
                                 Eigen::Matrix<double,N_C,N_C>                       ,
-                                Eigen::Matrix<double,1,1>                           );
+                                Eigen::Matrix<double,N_C,N_C>                       );
 
     /**
      * Complete lifted dynamics transform matrices
@@ -239,6 +239,13 @@ public:
                    Eigen::Matrix<double, 1, mpcWindow>                              );
 
     /**
+     * set LL matrix
+     * 
+     * @param LL        pointer to LL matrix
+     */
+    void setLL(Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow>                  &);                   
+
+    /**
      * linearizes nonlinear model into a linear model about X
      * 
      * @param ts        sampling time
@@ -303,16 +310,17 @@ public:
     // weight matrices
     Eigen::Matrix<double, N_S, N_S>                     Q;    
     Eigen::Matrix<double, N_C, N_C>                     R;    
-    Eigen::Matrix<double, 1,   1>                       RD;
+    Eigen::Matrix<double, N_C, N_C>                     RD;
     Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> Qbar;    
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Rbar;
-    Eigen::Matrix<double, 1*mpcWindow,   1*mpcWindow>   RbarD;        
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> RbarD;        
 
-    // Sx, Su, Su1, CAB matrices
+    // Sx, Su, Su1, CAB, LL matrices
     Eigen::Matrix<double, N_S*mpcWindow, N_S>           Sx;
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su;
     Eigen::Matrix<double, N_C*mpcWindow, 1>             Su1;
     Eigen::Matrix<double, N_S*mpcWindow, N_S>           CAB;
+    Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> LL;
 
     // state and the reference signal
     Eigen::Matrix<double, N_S, 1>                       X;
