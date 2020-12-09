@@ -150,6 +150,6 @@ void SerialPort::writePort(Eigen::Vector4d U)
 
 void SerialPort::sendInit()
 {
-    char* boot_msg = "R";
-    write(serial_port, boot_msg, sizeof(boot_msg));
+    // char* boot_msg = "R";
+    // write(serial_port, boot_msg, sizeof(boot_msg));
 }

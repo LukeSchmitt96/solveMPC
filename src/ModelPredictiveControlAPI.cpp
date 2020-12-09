@@ -2,6 +2,7 @@
 
 ModelPredictiveControlAPI::ModelPredictiveControlAPI()
 {
+    K << -50, -150, 4000, 250;
     S = G;
     W0 << 1, 1;
 
@@ -12,17 +13,15 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI()
     t0 = 0;
     dt = 0;
 
-    setSystemVars(Ad,Bd,Cd,Dd);
-    // ModelPredictiveControlAPI::setSystemVars(Ad,Bd,Cd,Dd);
-
-    setQ_R_RD(Q, R, RD, weightQ, weightR, weightRD);
-    computeQbar_Rbar_RbarD(Qbar, Rbar, RbarD, Q, R, RD);
-    computeSx_Su_Su1_CAB(Sx, Su, Su1, CAB, Ad, Cd, Bd);
-    computeH(H, Rbar, Su, Qbar);
-    setFVars(Fu, Fr, Fx, Qbar, Rbar, Sx, Su, Su1); 
-    computeGbar_Sbar_W(Gbar, Sbar, W, G, S, W0);
-    setF(f, Fu, Fr, Fx, X, ref);
-    setLL(LL);
+    setSystemVars();
+    setQ_R_RD(weightQ, weightR, weightRD);
+    computeQbar_Rbar_RbarD();
+    computeSx_Su_Su1_CAB();
+    computeH();
+    setFVars(); 
+    computeGbar_Sbar_W();
+    setF();
+    setLL();
 
     ub = W+Sbar*X;
 
@@ -37,10 +36,7 @@ ModelPredictiveControlAPI::~ModelPredictiveControlAPI()
     printf("[MPC API]\t Destructing MPC API object...");
 }
 
-void ModelPredictiveControlAPI::setSystemVars(Eigen::Matrix<double,N_S,N_S> &Ad,
-                                              Eigen::Matrix<double,N_S,N_C> &Bd,
-                                              Eigen::Matrix<double,N_O,N_S> &Cd,
-                                              Eigen::Matrix<double,N_O,N_C> &Dd)
+void ModelPredictiveControlAPI::setSystemVars()
 {
     Ad <<   1.0001,     0.0050,     -0.0014,    -0.0001,
             0.0063,     1.0188,     -0.5056,    -0.0328,
@@ -67,11 +63,7 @@ void ModelPredictiveControlAPI::setSystemVars(Eigen::Matrix<double,N_S,N_S> &Ad,
     // std::cout << "Dd:" << std::endl << Dd << std::endl << std::endl;
 }
 
-// TODO: make wq, wr, wrd vectors for weighting
-void ModelPredictiveControlAPI::setQ_R_RD(Eigen::Matrix<double,N_S,N_S>    &Q,
-                                          Eigen::Matrix<double,N_C,N_C>    &R,
-                                          Eigen::Matrix<double,N_C,N_C>    &RD,
-                                          double wq,
+void ModelPredictiveControlAPI::setQ_R_RD(double wq,
                                           double wr,
                                           double wrd)
 {
@@ -86,12 +78,7 @@ void ModelPredictiveControlAPI::setQ_R_RD(Eigen::Matrix<double,N_S,N_S>    &Q,
 }
 
 
-void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD(Eigen::Matrix<double,N_S*mpcWindow,N_S*mpcWindow>   &Qbar,
-                                                       Eigen::Matrix<double,N_C*mpcWindow,N_C*mpcWindow>   &Rbar,
-                                                       Eigen::Matrix<double,N_C*mpcWindow,N_C*mpcWindow>   &RbarD,
-                                                       Eigen::Matrix<double,N_S,N_S>                       Q,
-                                                       Eigen::Matrix<double,N_C,N_C>                       R,
-                                                       Eigen::Matrix<double,N_C,N_C>                       RD)
+void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD()
 {
     Qbar = blkdiag(Q, mpcWindow);
     Rbar = blkdiag(R, mpcWindow);
@@ -101,13 +88,7 @@ void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD(Eigen::Matrix<double,N_S*
 }
 
 
-void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB(Eigen::Matrix<double, N_S*mpcWindow, N_S>             &Sx,
-                                                     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow>   &Su,
-                                                     Eigen::Matrix<double, N_C*mpcWindow, 1>               &Su1,
-                                                     Eigen::Matrix<double, N_S*mpcWindow, N_S>             &CAB,
-                                                     Eigen::Matrix<double, N_S, N_S>                       Ad,
-                                                     Eigen::Matrix<double, N_S, N_C>                       Bd,
-                                                     Eigen::Matrix<double, N_O, N_S>                       Cd)
+void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
 {
     Sx  = Eigen::MatrixXd::Zero(Sx.rows(),  Sx.cols());
     Su  = Eigen::MatrixXd::Zero(Su.rows(),  Su.cols());
@@ -134,14 +115,20 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB(Eigen::Matrix<double, N_S*m
 
     Su1 = Su.col(0);
 
+    // // compute G
+    // for(int i=0; i<mpcWindow; i++)
+    // {
+    //     for(int j=0; j<i; j++)
+    //     {
+    //         G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB(4*(ii-jj)+1:4*(ii-jj)+4,:)); 
+    //     }
+    // }
+
     std::cout << "[MPC API]\t Sx Su, Su1, CAB created"   << std::endl;
 }
 
 
-void ModelPredictiveControlAPI::computeH(Eigen::SparseMatrix<double>                         &H,
-                                         Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Rbar,
-                                         Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> Qbar,
-                                         Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su)
+void ModelPredictiveControlAPI::computeH()
 {
     Eigen::MatrixXd H_temp;
     H_temp = 2*(LL.transpose() * Rbar * LL + RbarD + Su.transpose() * Qbar * Su);
@@ -162,14 +149,7 @@ void ModelPredictiveControlAPI::computeH(Eigen::SparseMatrix<double>            
 }
 
 
-void ModelPredictiveControlAPI::setFVars(Eigen::Matrix<double, N_C*mpcWindow, 1>               &Fu,
-                                         Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow>   &Fr, 
-                                         Eigen::Matrix<double, N_C*mpcWindow, N_S>             &Fx, 
-                                         Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow>   Qbar,
-                                         Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow>   Rbar, 
-                                         Eigen::Matrix<double, N_S*mpcWindow, N_S>             Sx,
-                                         Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow>   Su, 
-                                         Eigen::Matrix<double, N_C*mpcWindow, 1>               Su1)
+void ModelPredictiveControlAPI::setFVars()
 {
     Fu = 2*(Rbar.diagonal().transpose() + Su1.transpose() * Qbar * Su).transpose();
     Fr = -2*(Qbar*Su).transpose();
@@ -179,12 +159,7 @@ void ModelPredictiveControlAPI::setFVars(Eigen::Matrix<double, N_C*mpcWindow, 1>
 }
 
 
-void ModelPredictiveControlAPI::computeGbar_Sbar_W(Eigen::SparseMatrix<double>                     &Gbar,
-                                                   Eigen::Matrix<double, 2*mpcWindow, N_C>         &Sbar,
-                                                   Eigen::Matrix<double, 2*mpcWindow, 1>           &W,
-                                                   Eigen::Matrix<double, 2, N_C>                   G,
-                                                   Eigen::Matrix<double, 2, N_C>                   S,
-                                                   Eigen::Matrix<double, 2, 1>                     W0)
+void ModelPredictiveControlAPI::computeGbar_Sbar_W()
 {
     Eigen::Matrix<double, 2*mpcWindow, N_C*mpcWindow> Gbar_temp;
     Gbar_temp = blkdiag(G, mpcWindow);
@@ -210,21 +185,16 @@ void ModelPredictiveControlAPI::computeGbar_Sbar_W(Eigen::SparseMatrix<double>  
 }
 
 
-void ModelPredictiveControlAPI::setF(Eigen::Matrix<double, N_C*mpcWindow, 1>               &f,
-                                     Eigen::Matrix<double, N_C*mpcWindow, 1>               Fu,
-                                     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow>   Fr, 
-                                     Eigen::Matrix<double, N_C*mpcWindow, N_S>             Fx, 
-                                     Eigen::Matrix<double, N_S, 1>                         X,
-                                     Eigen::Matrix<double, N_S, mpcWindow>                 ref)
+void ModelPredictiveControlAPI::setF()
 {
     Eigen::Map<Eigen::Matrix<double, N_C*mpcWindow, 1>> ref_vector(ref.data(), ref.size());
     f = Fx*X+Fr*ref_vector;
 }
 
 
-void ModelPredictiveControlAPI::updateRef(Eigen::Matrix<double, N_S, mpcWindow>            &ref, 
-                                          Eigen::Matrix<double, 1, mpcWindow>              t)
+void ModelPredictiveControlAPI::updateRef()
 {
+    t = linspace(t0, t0 + dt/1000.0*(mpcWindow-1), mpcWindow);
     ref = Eigen::Matrix<double, N_C, mpcWindow>::Zero();
 
     Eigen::Matrix<double, 1, mpcWindow> ref_position;
@@ -246,7 +216,7 @@ void ModelPredictiveControlAPI::updateRef(Eigen::Matrix<double, N_S, mpcWindow> 
 }
 
 
-void ModelPredictiveControlAPI:: setLL(Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow>      &LL)
+void ModelPredictiveControlAPI:: setLL()
 {
     Eigen::Matrix<double, N_S, N_S> tempEye = Eigen::Matrix<double, N_S, N_S>::Identity();
     Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow > tempRep = tempEye.replicate(mpcWindow,mpcWindow);
@@ -259,8 +229,7 @@ void ModelPredictiveControlAPI:: setLL(Eigen::Matrix<double, N_S*mpcWindow, N_S*
 
 
 void ModelPredictiveControlAPI::linearizeABCD(double ts,
-                                              double U_LQR,
-                                              Eigen::Vector4d X)
+                                              double U_LQR)
 {
     double sinx3 = sin(X(2));
     double cosx3 = cos(X(2));

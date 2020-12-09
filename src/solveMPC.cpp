@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     // instantiate serial port object
     SerialPort sp("/dev/ttyUSB0");
 
-    // instantiate the solver
+    // instantiate the solver object
     OsqpEigen::Solver solver;
 
     // solver settings
@@ -85,11 +85,11 @@ int main(int argc, char** argv)
             mpc.t0 += mpc.dt;
 
             // update reference trajectory
-            mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000.0*(mpcWindow-1), mpcWindow);
-            mpc.updateRef(mpc.ref, mpc.t);
+            // mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000.0*(mpcWindow-1), mpcWindow);
+            mpc.updateRef();
 
             // update gradient and constraints
-            mpc.setF(mpc.f, mpc.Fu, mpc.Fr, mpc.Fx, mpc.X, mpc.ref);
+            mpc.setF();
             if(!solver.updateGradient(mpc.f)) return 1;
             if(!solver.updateUpperBound(mpc.W+mpc.Sbar*mpc.X)) return 1;
 
