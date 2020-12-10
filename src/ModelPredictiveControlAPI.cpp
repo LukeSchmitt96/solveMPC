@@ -3,8 +3,7 @@
 ModelPredictiveControlAPI::ModelPredictiveControlAPI()
 {
     K << -50, -150, 4000, 250;
-    S = G;
-    W0 << 1, 1;
+    W0 = 255.0 * Eigen::Matrix<double, 2*mpcWindow, 1>::Ones();
 
     // set arbitraty (to be filled) variables
     X << 0, 0, 0, 0;
@@ -18,12 +17,15 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI()
     computeQbar_Rbar_RbarD();
     computeSx_Su_Su1_CAB();
     computeH();
+    setLu();
     setFVars(); 
-    computeGbar_Sbar_W();
+    computeS();
+    computeSbar();
+    computeGbar();
     setF();
     setLL();
 
-    ub = W+Sbar*X;
+    ub = W0+Sbar*X;
 
     std::cout << "[MPC API]\t All QP matrices built successfully." << std::endl;
 
@@ -95,7 +97,7 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
     Su1 = Eigen::MatrixXd::Zero(Su1.rows(), Su1.cols());
     CAB = Eigen::MatrixXd::Zero(CAB.rows(), CAB.cols());
 
-    // compute Sx and CAB --- Sx = [Sx;Cd*Ad^ii];
+    // TODO: compute Sx and CAB --- Sx = [Sx;Cd*Ad^ii];
     // CAB = [CAB;CAiB]; 
     /*CAiB = CAiB + Cd * Ad ^ (ii - 1) * Bd;
     AiB = AiB + Ad ^ (ii - 1) * Bd;*/
@@ -110,23 +112,14 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
     // compute Su
     for(int i=0; i<Su.rows(); i++)
     {
-        for(int j=0; j<i; j++)
+        // TODO: IS THIS RIGHT??
+        for(int j=0; j<=i; j++)
         {
             Su(i,j) = CAB_Vector.segment(0,i-j).sum();
         }
     }
 
-    Su1 = Su.col(0);
-
-    // // compute G  --  Su(4*ii-3:4*ii,4*jj-3:4*jj) = CAB(4*(ii-jj)+1:4*(ii-jj)+4,:);
-    // G(ii, 4 * jj - 3:4 * jj) = -K * (eye(4) - AB(4 * (ii - jj) + 1:4 * (ii - jj) + 4, : ));
-    // for(int i=0; i<mpcWindow; i++)
-    // {
-    //     for(int j=0; j<i; j++)
-    //     {
-    //         G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB(4*(ii-jj)+1:4*(ii-jj)+4,:)); 
-    //     }
-    // }
+    Su1 = Su.leftCols<4>();
 
     std::cout << "[MPC API]\t Sx Su, Su1, CAB created"   << std::endl;
 }
@@ -152,10 +145,19 @@ void ModelPredictiveControlAPI::computeH()
     std::cout << "[MPC API]\t Hessian H created." << std::endl;
 }
 
+void ModelPredictiveControlAPI::setLu()
+{
+    for(int i=0; i<mpcWindow; i++)
+    {
+        // TODO: Ask Z about this
+        Lu.block<N_C,N_C>(i,0) = (mpcWindow-i+2)*Eigen::Matrix<double,N_C,N_C>::Identity();
+    }
+}
 
 void ModelPredictiveControlAPI::setFVars()
 {
-    Fu = 2*(Rbar.diagonal().transpose() + Su1.transpose() * Qbar * Su).transpose();
+    Fu = 2*((Rbar*Lu).transpose() + Su1.transpose() * Qbar * Su).transpose();
+    // Fu = 2*(Rbar.diagonal().transpose() * Lu.transpose() + Su1.transpose() * Qbar * Su).transpose();
     Fr = -2*(Qbar*Su).transpose();
     Fx = 2*(Sx.transpose() * Qbar * Su).transpose();
 
@@ -163,11 +165,54 @@ void ModelPredictiveControlAPI::setFVars()
 }
 
 
-void ModelPredictiveControlAPI::computeGbar_Sbar_W()
+void ModelPredictiveControlAPI::computeS()
+{
+    for(int i=0; i<mpcWindow; i++)
+    {
+        S.block<1,N_C>(i,0) = -K*Ad.pow(i+1);
+    }
+
+    std::cout << "[MPC API]\t S created."   << std::endl;
+}
+
+
+void ModelPredictiveControlAPI::computeSbar()
+{
+    Sbar << S, -S;
+
+    std::cout << "[MPC API]\t Sbar created."   << std::endl;
+}
+
+
+void ModelPredictiveControlAPI::computeG()
+{
+    Eigen::Matrix<double, N_S, N_S> AiB;
+    AiB = Eigen::Matrix<double, N_S, N_S>::Zero();
+    
+    Eigen::Matrix<double, N_S*mpcWindow, N_S> AB;
+    
+    for(int i; i<mpcWindow; i++)
+    {
+        AiB += Ad.pow(i) * Bd;
+        AB.block<N_S, N_S>(i*N_S, 0) = AiB;
+    }
+
+
+    for(int i=0; i<mpcWindow; i++)
+    {
+        for(int j=0; j<=i; j++)
+        {
+            G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB.block<N_S, N_S>(N_S*(i-j), 0)); 
+        }
+    }
+}
+
+
+void ModelPredictiveControlAPI::computeGbar()
 {
     Eigen::Matrix<double, 2*mpcWindow, N_C*mpcWindow> Gbar_temp;
-    Gbar_temp = blkdiag(G, mpcWindow);
-    Gbar.resize(2*mpcWindow, 4*mpcWindow);
+    Gbar_temp << G, -G;
+    Gbar.resize(2*mpcWindow, N_C*mpcWindow);
 
     for(int i=0; i<2*mpcWindow; i++)
     {
@@ -179,11 +224,10 @@ void ModelPredictiveControlAPI::computeGbar_Sbar_W()
 
     Gbar.makeCompressed();
 
-    for(int i; i<mpcWindow; i++)
-    {
-        Sbar.block<2, N_C> (i*S.rows(),0) = S;
-        W.block<2, 1>(i*W0.rows(),0) = W0;
-    }
+    // for(int i; i<mpcWindow; i++)
+    // {
+    //     Sbar.block<2, N_C> (i*S.rows(),0) = S;
+    // }
 
     std::cout << "[MPC API]\t Constraints created."   << std::endl;
 }

@@ -90,9 +90,24 @@ public:
     void setFVars();    
 
     /**
+     * Compute S
+     */
+    void computeS();      
+
+    /**
+     * Compute Sbar
+     */
+    void computeSbar(); 
+
+    /**
+     * Compute G
+     */
+    void computeG();
+
+    /**
      * Compute constraints components for the qp problem
      */
-    void computeGbar_Sbar_W();          
+    void computeGbar();          
 
     /**
      * compute gradient for the qp problem
@@ -107,7 +122,12 @@ public:
     /**
      * set LL matrix
      */
-    void setLL();                   
+    void setLL();      
+    
+    /**
+     * set Lu matrix
+     */
+    void setLu();               
 
     /**
      * linearizes nonlinear model into a linear model about X
@@ -135,17 +155,14 @@ public:
     Eigen::Matrix<double, N_O, N_S>                     Cd;
     Eigen::Matrix<double, N_O, N_C>                     Dd;
 
-    // G and S are Wrong Sizes 
-    Eigen::Matrix<double, 2, N_C>                       G;
-    Eigen::Matrix<double, 2, N_C>                       S; 
-    //
+    Eigen::Matrix<double, mpcWindow, N_S*mpcWindow>     G;
+    Eigen::Matrix<double, mpcWindow, N_O>               S;
 
 
     // constraint matrices
-    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;  // What is Sbar? 
-    Eigen::Matrix<double, 2, 1>                         W0; // W0 = ones(2*N,1)*255; I think you have it as W? 
-    Eigen::Matrix<double, 2*mpcWindow, 1>               W;
-    Eigen::SparseMatrix<double>                         Gbar;   // Not a matrix 
+    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;
+    Eigen::Matrix<double, 2*mpcWindow, 1>               W0;
+    Eigen::SparseMatrix<double>                         Gbar;
 
     // weight matrices
     Eigen::Matrix<double, N_S, N_S>                     Q;    
@@ -158,9 +175,10 @@ public:
     // Sx, Su, Su1, CAB, LL matrices
     Eigen::Matrix<double, N_S*mpcWindow, N_S>           Sx;
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su;
-    Eigen::Matrix<double, N_C*mpcWindow, 1>             Su1;
+    Eigen::Matrix<double, N_C*mpcWindow, N_C>           Su1;
     Eigen::Matrix<double, N_S*mpcWindow, N_S>           CAB;
     Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> LL;
+    Eigen::Matrix<double, mpcWindow*N_C, N_C>           Lu;
 
     // state and the reference signal
     Eigen::Matrix<double, N_S, 1>                       X;
@@ -169,7 +187,7 @@ public:
 
     // QP problem matrices and vectors
     Eigen::SparseMatrix<double>                         H;
-    Eigen::Matrix<double, N_C*mpcWindow, 1>             Fu;
+    Eigen::Matrix<double, N_C*mpcWindow, N_C>           Fu;
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Fr;
     Eigen::Matrix<double, N_C*mpcWindow, N_S>           Fx;
     Eigen::Matrix<double, N_C*mpcWindow, 1>             f;

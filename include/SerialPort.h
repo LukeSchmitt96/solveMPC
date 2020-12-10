@@ -66,6 +66,6 @@ public:
 
     // set serial read variables
     int num_bytes; 
-    char read_buf [64];
+    char read_buf [42];
 
 };

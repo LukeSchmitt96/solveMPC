@@ -91,7 +91,7 @@ int main(int argc, char** argv)
             // update gradient and constraints
             mpc.setF();
             if(!solver.updateGradient(mpc.f)) return 1;
-            if(!solver.updateUpperBound(mpc.W+mpc.Sbar*mpc.X)) return 1;
+            if(!solver.updateUpperBound(mpc.W0+mpc.Sbar*mpc.X)) return 1;
 
             // solve the QP problem
             if(!solver.solve()) return 1;
