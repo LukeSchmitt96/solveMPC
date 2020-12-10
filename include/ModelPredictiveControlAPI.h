@@ -30,15 +30,8 @@ const int N_S = 4;  // number of states
 const int N_C = 4;  // number of controls
 const int N_O = 4;  // number of outputs
 
-// set weights
-const double weightQ =  1.0;    // state weight
-const double weightR =  1e-3;   // control weight
-const double weightRD = 0.0;    // change in control weight
-
 // timing parameters
 const double Ts = 100;          // square wave period
-
-
 
 // MPC API Class
 class ModelPredictiveControlAPI 
@@ -60,14 +53,8 @@ public:
     /**
      * Set the state, control, and change in control weight matrices based
      *      on weight inputs
-     * 
-     * @param wq    state weight value  
-     * 
-     * @param wr    control weight value    
-     * 
-     * @param wrd   change in control weight value
      */
-    void setQ_R_RD(double wq, double wr, double wrd);
+    void setQ_R_RD();
 
     /**
      * Set the lifted state, control, and change in control weight matrices
@@ -201,6 +188,9 @@ public:
     //  number of decisiona vars and constraints
     int n_variables;
     int n_constraints;  
+
+    // output verbosity
+    bool verbose;
 
     /**
      * Create a block diagonal matrix in the same style as MATLAB

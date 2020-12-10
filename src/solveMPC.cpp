@@ -25,6 +25,7 @@ int main(int argc, char** argv)
 
     // instantiate mpc api object
     ModelPredictiveControlAPI mpc;
+    mpc.verbose = false;
 
     // instantiate serial port object
     SerialPort sp("/dev/ttyUSB0");
@@ -48,6 +49,9 @@ int main(int argc, char** argv)
     mpc.lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
     mpc.ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
 
+
+
+
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
     
@@ -60,6 +64,8 @@ int main(int argc, char** argv)
 
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
+
+
 
 
     // instantiate the solver
@@ -123,8 +129,11 @@ int main(int argc, char** argv)
 
             // Xact = mpc.Ad*mpc.X + mpc.Bd*U
 
-            std::cout << "[solveMPC]\t" << "Control output: " << U.transpose() << std::endl;
-
+            if(mpc.verbose)
+            {
+                std::cout << "[solveMPC]\t" << "Control output: " << U.transpose() << std::endl;
+            }
+            
             sp.writePort(U);
 
             count++;

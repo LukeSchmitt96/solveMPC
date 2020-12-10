@@ -2,6 +2,8 @@
 
 ModelPredictiveControlAPI::ModelPredictiveControlAPI()
 {
+    verbose = false;
+
     K << -50, -150, 4000, 250;
     W0 = 255.0 * Eigen::Matrix<double, 2*mpcWindow, 1>::Ones();
 
@@ -13,7 +15,7 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI()
     dt = 0;
 
     setSystemVars();
-    setQ_R_RD(weightQ, weightR, weightRD);
+    setQ_R_RD();
     computeQbar_Rbar_RbarD();
     computeSx_Su_Su1_CAB();
     computeH();
@@ -53,30 +55,30 @@ void ModelPredictiveControlAPI::setSystemVars()
     Cd = Eigen::Matrix<double,N_O,N_S>::Identity();
 
     Dd = Eigen::Matrix<double,N_O,N_C>::Zero();
-    /*Dd <<   -0.0000,   -0.0025,      0.0016,    0.0001, 
-            -0.0134,   -0.0053,      0.7694,    0.0482, 
-            -0.0005,   -0.0002,      0.0266,   -0.0008, 
-            -0.2266,   -0.0889,     12.4390,    0.8142; */
 
-    std::cout << "[MPC API]\t System variables created."   << std::endl;
-    // std::cout << "Ad:" << std::endl << Ad << std::endl << std::endl;
-    // std::cout << "Bd:" << std::endl << Bd << std::endl << std::endl;
-    // std::cout << "Cd:" << std::endl << Cd << std::endl << std::endl;
-    // std::cout << "Dd:" << std::endl << Dd << std::endl << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t System variables created."   << std::endl;
+        std::cout << "Ad:" << std::endl << Ad << std::endl << std::endl;
+        std::cout << "Bd:" << std::endl << Bd << std::endl << std::endl;
+        std::cout << "Cd:" << std::endl << Cd << std::endl << std::endl;
+        std::cout << "Dd:" << std::endl << Dd << std::endl << std::endl;
+    }
 }
 
-void ModelPredictiveControlAPI::setQ_R_RD(double wq,
-                                          double wr,
-                                          double wrd)
+void ModelPredictiveControlAPI::setQ_R_RD()
 {
-    Q  = Eigen::Matrix<double, N_S, N_S>::Identity() * wq;
-    R  = Eigen::Matrix<double, N_C, N_C>::Identity() * wr;
-    RD = Eigen::Matrix<double, N_C, N_C>::Identity() * wrd;
+    Q.diagonal()  << 1,    1,    1,    1;
+    R.diagonal()  << 1e-4, 1e-4, 1e-4, 1e-4;
+    RD.diagonal() << 1e-4, 1e-4, 1e-4, 1e-4;
 
-    std::cout << "[MPC API]\t Set Q, R, and RD matrices created."  << std::endl;
-    // std::cout << "Q:"  << std::endl << Q  << std::endl << std::endl;
-    // std::cout << "R:"  << std::endl << R  << std::endl << std::endl;
-    // std::cout << "RD:" << std::endl << RD << std::endl << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Set Q, R, and RD matrices created."  << std::endl;
+        std::cout << "Q:"  << std::endl << Q  << std::endl << std::endl;
+        std::cout << "R:"  << std::endl << R  << std::endl << std::endl;
+        std::cout << "RD:" << std::endl << RD << std::endl << std::endl;
+    }
 }
 
 
@@ -87,6 +89,12 @@ void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD()
     RbarD = blkdiag(RD, mpcWindow);
 
     std::cout << "[MPC API]\t Lifted weight matrices created."   << std::endl;
+    if(verbose)
+    {
+        std::cout << "Qbar:"  << std::endl << Qbar  << std::endl << std::endl;
+        std::cout << "Rbar:"  << std::endl << Rbar  << std::endl << std::endl;
+        std::cout << "RbarD:" << std::endl << RbarD << std::endl << std::endl;
+    }
 }
 
 
@@ -121,7 +129,14 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
 
     Su1 = Su.leftCols<4>();
 
-    std::cout << "[MPC API]\t Sx Su, Su1, CAB created"   << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Sx Su, Su1, CAB created"       << std::endl;
+        std::cout << "Sx:"    << std::endl << Sx    << std::endl << std::endl;
+        std::cout << "CAB:"   << std::endl << CAB   << std::endl << std::endl;
+        std::cout << "Su:"    << std::endl << Su    << std::endl << std::endl;
+        std::cout << "Su1:"   << std::endl << Su1  << std::endl  << std::endl;
+    }
 }
 
 
@@ -142,7 +157,12 @@ void ModelPredictiveControlAPI::computeH()
 
     H.makeCompressed();
 
-    std::cout << "[MPC API]\t Hessian H created." << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Hessian H created." << std::endl;
+        std::cout << "H:" << std::endl << H_temp << std::endl  << std::endl;
+    }
+    
 }
 
 void ModelPredictiveControlAPI::setLu()
@@ -152,16 +172,39 @@ void ModelPredictiveControlAPI::setLu()
         // TODO: Ask Z about this
         Lu.block<N_C,N_C>(i,0) = (mpcWindow-i+2)*Eigen::Matrix<double,N_C,N_C>::Identity();
     }
+
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Lu created." << std::endl;
+        std::cout << "Lu:" << std::endl << Lu << std::endl  << std::endl;
+    }
 }
+
+
+void ModelPredictiveControlAPI:: setLL()
+{
+    Eigen::Matrix<double, N_S, N_S> tempEye = Eigen::Matrix<double, N_S, N_S>::Identity();
+    Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow > tempRep = tempEye.replicate(mpcWindow,mpcWindow);
+    
+    std::cout << "[MPC API]\t LL created."   << std::endl;
+    LL = Eigen::MatrixXd(tempRep.triangularView<Eigen::Lower>());
+} 
+
 
 void ModelPredictiveControlAPI::setFVars()
 {
     Fu = 2*((Rbar*Lu).transpose() + Su1.transpose() * Qbar * Su).transpose();
-    // Fu = 2*(Rbar.diagonal().transpose() * Lu.transpose() + Su1.transpose() * Qbar * Su).transpose();
     Fr = -2*(Qbar*Su).transpose();
     Fx = 2*(Sx.transpose() * Qbar * Su).transpose();
 
-    std::cout << "[MPC API]\t Components of F created."   << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Components of F created."   << std::endl;
+        std::cout << "Fu:" << std::endl << Fu << std::endl  << std::endl;
+        std::cout << "Fr:" << std::endl << Fr << std::endl  << std::endl;
+        std::cout << "Fx:" << std::endl << Fx << std::endl  << std::endl;
+    }
+    
 }
 
 
@@ -172,7 +215,11 @@ void ModelPredictiveControlAPI::computeS()
         S.block<1,N_C>(i,0) = -K*Ad.pow(i+1);
     }
 
-    std::cout << "[MPC API]\t S created."   << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t S created."   << std::endl;
+        std::cout << "S:" << std::endl << S << std::endl  << std::endl;
+    }
 }
 
 
@@ -180,7 +227,11 @@ void ModelPredictiveControlAPI::computeSbar()
 {
     Sbar << S, -S;
 
-    std::cout << "[MPC API]\t Sbar created."   << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Sbar created."   << std::endl;
+        std::cout << "Sbar:" << std::endl << Sbar << std::endl  << std::endl;
+    }
 }
 
 
@@ -188,7 +239,7 @@ void ModelPredictiveControlAPI::computeG()
 {
     Eigen::Matrix<double, N_S, N_S> AiB;
     AiB = Eigen::Matrix<double, N_S, N_S>::Zero();
-    
+
     Eigen::Matrix<double, N_S*mpcWindow, N_S> AB;
     
     for(int i; i<mpcWindow; i++)
@@ -204,6 +255,12 @@ void ModelPredictiveControlAPI::computeG()
         {
             G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB.block<N_S, N_S>(N_S*(i-j), 0)); 
         }
+    }
+
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t G created."   << std::endl;
+        std::cout << "G:" << std::endl << G << std::endl  << std::endl;
     }
 }
 
@@ -224,12 +281,11 @@ void ModelPredictiveControlAPI::computeGbar()
 
     Gbar.makeCompressed();
 
-    // for(int i; i<mpcWindow; i++)
-    // {
-    //     Sbar.block<2, N_C> (i*S.rows(),0) = S;
-    // }
-
-    std::cout << "[MPC API]\t Constraints created."   << std::endl;
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t Gbar created."   << std::endl;
+        std::cout << "Gbar:" << std::endl << Gbar_temp << std::endl  << std::endl;
+    }
 }
 
 
@@ -237,6 +293,12 @@ void ModelPredictiveControlAPI::setF()
 {
     Eigen::Map<Eigen::Matrix<double, N_C*mpcWindow, 1>> ref_vector(ref.data(), ref.size());
     f = Fx*X+Fr*ref_vector;
+
+    if(verbose)
+    {
+        std::cout << "[MPC API]\t f created."   << std::endl;
+        std::cout << "f:" << std::endl << f << std::endl  << std::endl;
+    }
 }
 
 
@@ -262,18 +324,6 @@ void ModelPredictiveControlAPI::updateRef()
 
     ref.block<1,mpcWindow>(0,0) = ref_position;
 }
-
-
-void ModelPredictiveControlAPI:: setLL()
-{
-    Eigen::Matrix<double, N_S, N_S> tempEye = Eigen::Matrix<double, N_S, N_S>::Identity();
-    Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow > tempRep = tempEye.replicate(mpcWindow,mpcWindow);
-    
-    std::cout << "[MPC API]\t LL created."   << std::endl;
-    LL = Eigen::MatrixXd(tempRep.triangularView<Eigen::Lower>());
-} 
-
-
 
 
 void ModelPredictiveControlAPI::linearizeABCD(double ts,
