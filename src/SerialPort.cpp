@@ -128,7 +128,7 @@ bool SerialPort::readPort(double            dt,
     num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
 
     // if (!(num_bytes < 0))
-    if (num_bytes > 20)         // TODO: just 20 for now, tune this number for best performance
+    if (num_bytes > 30)         // TODO: just 20 for now, tune this number for best performance
     {
         printf("[SerialPort]\tRead %i bytes. Received message: %s", num_bytes, read_buf);
         getDataFromSerial(dt, X, read_buf);

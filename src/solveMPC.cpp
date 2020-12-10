@@ -41,9 +41,26 @@ int main(int argc, char** argv)
     solver.data()->setNumberOfConstraints(mpc.n_constraints);
     if(!solver.data()->setHessianMatrix(mpc.H)) return 1;
     if(!solver.data()->setGradient(mpc.f)) return 1;
+    // if(!solver.data()->setLinearConstraintsMatrix(mpc.Gbar)) return 1;
+    // if(!solver.data()->setLowerBound(mpc.lb)) return 1;
+    // if(!solver.data()->setUpperBound(mpc.ub)) return 1;
+
+    mpc.lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+    mpc.ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+
+    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
+    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
+    
+    mpc.lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+    mpc.ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -Eigen::Infinity;
+
     if(!solver.data()->setLinearConstraintsMatrix(mpc.Gbar)) return 1;
     if(!solver.data()->setLowerBound(mpc.lb)) return 1;
     if(!solver.data()->setUpperBound(mpc.ub)) return 1;
+
+    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
+    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
+
 
     // instantiate the solver
     if(!solver.initSolver()) return 1;
@@ -90,8 +107,8 @@ int main(int argc, char** argv)
 
             // update gradient and constraints
             mpc.setF();
-            if(!solver.updateGradient(mpc.f)) return 1;
-            if(!solver.updateUpperBound(mpc.W0+mpc.Sbar*mpc.X)) return 1;
+            // if(!solver.updateGradient(mpc.f)) return 1;
+            // if(!solver.updateUpperBound(mpc.W0+mpc.Sbar*mpc.X)) return 1;
 
             // solve the QP problem
             if(!solver.solve()) return 1;
