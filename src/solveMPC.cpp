@@ -24,8 +24,7 @@ int main(int argc, char** argv)
     std::cout << std::endl;
 
     // instantiate mpc api object
-    ModelPredictiveControlAPI mpc;
-    mpc.verbose = false;
+    ModelPredictiveControlAPI mpc(true);
 
     // instantiate serial port object
     SerialPort sp("/dev/ttyUSB0");
@@ -57,6 +56,18 @@ int main(int argc, char** argv)
     
     mpc.lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
     mpc.ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -Eigen::Infinity;
+    Eigen::MatrixXd Gbar_temp = Eigen::Matrix<double, 2*mpcWindow, N_S>::Zero();
+
+    mpc.Gbar.resize(2*mpcWindow, N_C*mpcWindow);
+    for(int i = 0; i<Gbar_temp.rows(); i++)
+    {
+        for(int j=0; j<Gbar_temp.cols(); j++)
+        {
+            mpc.Gbar.insert(i,j) = Gbar_temp(i,j);
+        }
+    }
+
+    mpc.Gbar.makeCompressed();
 
     if(!solver.data()->setLinearConstraintsMatrix(mpc.Gbar)) return 1;
     if(!solver.data()->setLowerBound(mpc.lb)) return 1;
@@ -72,7 +83,7 @@ int main(int argc, char** argv)
     if(!solver.initSolver()) return 1;
 
     // controller input and QPSolution vector
-    Eigen::Vector4d U;
+    Eigen::Matrix<double, 1, 1> U;
     Eigen::VectorXd QPSolution;
 
     // set timinig variables
@@ -80,7 +91,7 @@ int main(int argc, char** argv)
     
     // set serial read variables
     int num_bytes; 
-    char read_buf [64];
+    char read_buf [40];
 
     // while(true){
     //     sp.sendInit();
@@ -109,7 +120,7 @@ int main(int argc, char** argv)
 
             // update reference trajectory
             // mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000.0*(mpcWindow-1), mpcWindow);
-            mpc.updateRef();
+            mpc.updateRef(10);
 
             // update gradient and constraints
             mpc.setF();

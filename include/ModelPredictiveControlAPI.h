@@ -23,11 +23,11 @@
 // const std::string delimiter = ", ";
 
 // set the MPC preview window
-const int mpcWindow = 40;
+const int mpcWindow = 10;
 
 // set matrix dimensions
 const int N_S = 4;  // number of states
-const int N_C = 4;  // number of controls
+const int N_C = 1;  // number of controls
 const int N_O = 1;  // number of outputs
 
 // timing parameters
@@ -38,12 +38,22 @@ class ModelPredictiveControlAPI
 {
 
 public:
-    // constructor
-    ModelPredictiveControlAPI();
+    /** constructor
+     * 
+     * @param verbose_          // verbosity of the API
+     */
+    ModelPredictiveControlAPI(bool);
 
     // destructor
     ~ModelPredictiveControlAPI();
     
+    /**
+     * Sets the verbosity of the MPC API
+     * 
+     * @param verbose_          // verbosity of the API
+     */
+    void setVerbosity(bool);
+
     /**
      * Set the system values. These should be the discrete-time matrices
      *      found in MATLAB after c2d is run
@@ -103,8 +113,10 @@ public:
 
     /**
      * update the reference given the time
+     * 
+     * @param pos_ref           position reference in meters
      */
-    void updateRef();
+    void updateRef(double);
 
     /**
      * set LL matrix
@@ -144,7 +156,7 @@ public:
 
     // State Constraints 
     Eigen::Matrix<double, mpcWindow, N_S*mpcWindow>     G;
-    Eigen::Matrix<double, mpcWindow, N_O>               S;
+    Eigen::Matrix<double, mpcWindow, N_S>               S;
 
 
     // constraint matrices 
@@ -153,25 +165,25 @@ public:
     Eigen::SparseMatrix<double>                         Gbar;
 
     // weight matrices - Updated 
-    Eigen::Matrix<double, N_C, N_C>                     Q;    
-    Eigen::Matrix<double, N_C, N_C>                     R;    
-    Eigen::Matrix<double, N_C, N_C>                     RD;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Qbar;    
-    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Rbar;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> RbarD;        
+    Eigen::Matrix<double, N_O, N_O>                     Q;    
+    Eigen::Matrix<double, N_O, N_O>                     R;    
+    Eigen::Matrix<double, N_O, N_O>                     RD;
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Qbar;    
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Rbar;
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> RbarD;        
 
     // Sx, Su, Su1, CAB, LL matrices  -- All updated other than Lu. Not used ? 
     Eigen::Matrix<double, N_C*mpcWindow, N_S>           Sx;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C>           Su1;
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Su;
+    Eigen::Matrix<double, N_O*mpcWindow, N_O>           Su1;
     Eigen::Matrix<double, N_C*mpcWindow, N_C>           CAB;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> LL;
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> LL;
     Eigen::Matrix<double, mpcWindow*N_C, N_C>           Lu;
 
     // state and the reference signal
     Eigen::Matrix<double, N_S, 1>                       X;
     Eigen::Matrix<double, N_O, mpcWindow>               ref;
-    Eigen::Matrix<double, 1, N_O>                       K;
+    Eigen::Matrix<double, 1, N_S>                       K;
 
     // QP problem matrices and vectors
     Eigen::SparseMatrix<double>                         H;

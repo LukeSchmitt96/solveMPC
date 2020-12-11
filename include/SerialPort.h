@@ -54,7 +54,7 @@ public:
      * 
      * @param U             control signal
      */
-    void writePort(Eigen::Vector4d);
+    void writePort(Eigen::MatrixXd);
 
     /**
      * send init byte to arduino
