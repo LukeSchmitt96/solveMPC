@@ -28,13 +28,13 @@ SerialPort::SerialPort(const char* port_name)
         //     return;
         // }
 
-        printf("[SerialPort]\t Error %i from open: %s. Reattempting connection...", errno, strerror(errno));
+        printf("[SerialPort]\t Error %i from open: %s. Reattempting connection...\n", errno, strerror(errno));
         sleep(1);
         serial_port = open(port_name, O_RDWR);
         attempt++;
     }
     
-    printf("[SerialPort]\t Serial port opened successfully.");
+    printf("[SerialPort]\t Serial port opened successfully.\n");
     
      
     // Read in existing settings, and handle any error
@@ -73,14 +73,14 @@ SerialPort::SerialPort(const char* port_name)
     // Save tty settings, also checking for error
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) 
     {
-        printf("Error %i from tcsetattr: %s", errno, strerror(errno));
+        printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
     }
 }
 
 
 SerialPort::~SerialPort()
 {
-    printf("[SerialPort]\t\t Destructing Serial Port Communication Object.");
+    printf("[SerialPort]\t Destructing Serial Port Communication Object.\n");
     close(serial_port);
 }
 
@@ -128,23 +128,23 @@ bool SerialPort::readPort(double            dt,
     num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
 
     // if (!(num_bytes < 0))
-    if (num_bytes > 30)         // TODO: just 20 for now, tune this number for best performance
+    if (num_bytes > 30)         // TODO: tune this number for best performance
     {
-        printf("[SerialPort]\tRead %i bytes. Received message: %s", num_bytes, read_buf);
+        // printf("\n[SerialPort]\tRead %i bytes. Received message: %s", num_bytes, read_buf);
         getDataFromSerial(dt, X, read_buf);
         return true;
     } 
     else
     {
-        printf("[SerialPort]\tProblem reading from serial, reusing last control signal.");
+        printf("[SerialPort]\tBad serial read, reusing last control signal.\n");
         return false;
     }
 }
 
 
-void SerialPort::writePort(Eigen::Vector4d U)
+void SerialPort::writePort(Eigen::MatrixXd data_send)
 {
-    write(serial_port, U.data(), sizeof(U));
+    write(serial_port, data_send.data(), sizeof(data_send));
 }
 
 
