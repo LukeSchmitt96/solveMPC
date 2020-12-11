@@ -28,7 +28,7 @@ const int mpcWindow = 40;
 // set matrix dimensions
 const int N_S = 4;  // number of states
 const int N_C = 4;  // number of controls
-const int N_O = 4;  // number of outputs
+const int N_O = 1;  // number of outputs
 
 // timing parameters
 const double Ts = 100;          // square wave period
@@ -132,7 +132,7 @@ public:
      */
     void c2d(double ts);
 
-    // system matrices
+    // system matrices - Updated 
     Eigen::Matrix<double, N_S, N_S>                     A;
     Eigen::Matrix<double, N_S, 1>                       B;
     Eigen::Matrix<double, N_O, N_S>                     C;
@@ -142,29 +142,30 @@ public:
     Eigen::Matrix<double, N_O, N_S>                     Cd;
     Eigen::Matrix<double, N_O, N_C>                     Dd;
 
+    // State Constraints 
     Eigen::Matrix<double, mpcWindow, N_S*mpcWindow>     G;
     Eigen::Matrix<double, mpcWindow, N_O>               S;
 
 
-    // constraint matrices
+    // constraint matrices 
     Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;
     Eigen::Matrix<double, 2*mpcWindow, 1>               W0;
     Eigen::SparseMatrix<double>                         Gbar;
 
-    // weight matrices
-    Eigen::Matrix<double, N_S, N_S>                     Q;    
+    // weight matrices - Updated 
+    Eigen::Matrix<double, N_C, N_C>                     Q;    
     Eigen::Matrix<double, N_C, N_C>                     R;    
     Eigen::Matrix<double, N_C, N_C>                     RD;
-    Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> Qbar;    
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Qbar;    
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Rbar;
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> RbarD;        
 
-    // Sx, Su, Su1, CAB, LL matrices
-    Eigen::Matrix<double, N_S*mpcWindow, N_S>           Sx;
+    // Sx, Su, Su1, CAB, LL matrices  -- All updated other than Lu. Not used ? 
+    Eigen::Matrix<double, N_C*mpcWindow, N_S>           Sx;
     Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Su;
     Eigen::Matrix<double, N_C*mpcWindow, N_C>           Su1;
-    Eigen::Matrix<double, N_S*mpcWindow, N_S>           CAB;
-    Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow> LL;
+    Eigen::Matrix<double, N_C*mpcWindow, N_C>           CAB;
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> LL;
     Eigen::Matrix<double, mpcWindow*N_C, N_C>           Lu;
 
     // state and the reference signal

@@ -42,19 +42,19 @@ ModelPredictiveControlAPI::~ModelPredictiveControlAPI()
 
 void ModelPredictiveControlAPI::setSystemVars()
 {
-    Ad <<   1.0001,     0.0050,     -0.0014,    -0.0001,
-            0.0063,     1.0188,     -0.5056,    -0.0328,
-            0.0003,     0.0008,      0.9783,     0.0035,
-            0.1062,     0.3178,     -7.7149,     0.4474;
+    Ad <<   1.0001,     0.0102,     -0.0048,    -0.0003,
+            0.0091,     1.0272,     -0.7927,    -0.0501,
+            0.0010,     0.0029,      0.9295,     0.0049,
+            0.1538,     0.4609,     -11.2071,    0.1605;
 
-    Bd <<  -0.0001,    -0.0001,      0.0014,     0.0001,
-           -0.0063,    -0.0188,      0.5027,     0.0314,
-           -0.0003,    -0.0009,      0.0239,    -0.0015,
-           -0.1062,    -0.3185,      8.4938,     0.5309;
+    Bd <<  -0.0001,   
+           -0.0091,  
+           -0.0010,   
+           -0.1538;
 
-    Cd = Eigen::Matrix<double,N_O,N_S>::Identity();
+    Cd << 1, 0, 0, 0;
 
-    Dd = Eigen::Matrix<double,N_O,N_C>::Zero();
+    Dd = << 1; 
 
     if(verbose)
     {
@@ -68,9 +68,9 @@ void ModelPredictiveControlAPI::setSystemVars()
 
 void ModelPredictiveControlAPI::setQ_R_RD()
 {
-    Q.diagonal()  << 1,    1,    1,    1;
-    R.diagonal()  << 1e-4, 1e-4, 1e-4, 1e-4;
-    RD.diagonal() << 1e-4, 1e-4, 1e-4, 1e-4;
+    Q << 50; 
+    R << 1 / 30;
+    RD << 5
 
     if(verbose)
     {
@@ -111,8 +111,8 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
     AiB = AiB + Ad ^ (ii - 1) * Bd;*/
     for(int i=0; i<mpcWindow; i++)
     {
-        Sx.block<N_S, N_O>(i*N_O,0)  = Cd*Ad.pow(i+1);
-        CAB.block<N_S,N_O>(i*N_O,0) = Cd*Ad.pow(i)*Bd;
+        Sx.block<N_C, N_S>(i*N_O,0) = Cd*Ad.pow(i+1);
+        CAB.block<N_C,N_O>(i*N_O,0) = Cd*Ad.pow(i)*Bd;
     }
 
     Eigen::VectorXd CAB_Vector(Eigen::Map<Eigen::VectorXd>(CAB.data(), CAB.cols()*CAB.rows()));
@@ -123,11 +123,11 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
         // TODO: IS THIS RIGHT??
         for(int j=0; j<=i; j++)
         {
-            Su(i,j) = CAB_Vector.segment(0,i-j).sum();
+            Su(i,j) = CAB_Vector.segment(0,i-j+1).sum();
         }
     }
 
-    Su1 = Su.leftCols<4>();
+    Su1 = Su.leftCols<1>();
 
     if(verbose)
     {
