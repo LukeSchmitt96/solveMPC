@@ -61,3 +61,8 @@ To start solver:
 ```
 
 Note that you may need to run it once or twice before it 'takes'.
+
+Note that you can set a verbose output by adding a true or false flag to the command line statement. It is set to `false` by default.
+```bash
+./solveMPC true
+```
