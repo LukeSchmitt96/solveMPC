@@ -19,19 +19,15 @@
 /* ----------------- Parameters and Helpers ------------------- */
 /* ------------------------------------------------------------ */
 
-// // String splitting delimiter
-// const std::string delimiter = ", ";
-
-// set the MPC preview window
-const int mpcWindow = 10;
+const int mpcWindow = 10;           // MPC preview window
 
 // set matrix dimensions
-const int N_S = 4;  // number of states
-const int N_C = 1;  // number of controls
-const int N_O = 1;  // number of outputs
+const int N_S = 4;                  // number of states
+const int N_C = 1;                  // number of controls
+const int N_O = 1;                  // number of outputs
 
 // timing parameters
-const double Ts = 100;          // square wave period
+const double Ts = 100;              // square wave period
 
 // MPC API Class
 class ModelPredictiveControlAPI 
@@ -40,7 +36,7 @@ class ModelPredictiveControlAPI
 public:
     /** constructor
      * 
-     * @param verbose_          // verbosity of the API
+     * @param verbose_              // verbosity of the API
      */
     ModelPredictiveControlAPI(bool);
 
@@ -155,35 +151,32 @@ public:
     OsqpEigen::Solver solver;
     bool solverFlag;
 
-    // system matrices - Updated 
-    Eigen::Matrix<double, N_S, N_S>                     A;
-    Eigen::Matrix<double, N_S, 1>                       B;
-    Eigen::Matrix<double, N_O, N_S>                     C;
-    Eigen::Matrix<double, N_O, 1>                       D;
-    Eigen::Matrix<double, N_S, N_S>                     Ad;
-    Eigen::Matrix<double, N_S, N_C>                     Bd;
-    Eigen::Matrix<double, N_O, N_S>                     Cd;
-    Eigen::Matrix<double, N_O, N_C>                     Dd;
+    // system matrices
+    Eigen::Matrix<double, N_S, N_S>                     A;      // system A matrix
+    Eigen::Matrix<double, N_S, 1>                       B;      // system B matrix
+    Eigen::Matrix<double, N_O, N_S>                     C;      // system C matrix
+    Eigen::Matrix<double, N_O, 1>                       D;      // system D matrix
+    Eigen::Matrix<double, N_S, N_S>                     Ad;     // system Ad matrix
+    Eigen::Matrix<double, N_S, N_C>                     Bd;     // system Bd matrix
+    Eigen::Matrix<double, N_O, N_S>                     Cd;     // system Cd matrix
+    Eigen::Matrix<double, N_O, N_C>                     Dd;     // system Dd matrix
 
     // State Constraints 
-    Eigen::Matrix<double, mpcWindow, N_S*mpcWindow>     G;
-    Eigen::Matrix<double, mpcWindow, N_S>               S;
+    Eigen::Matrix<double, mpcWindow, N_S*mpcWindow>     G;      // QP linear constraints matrix component
+    Eigen::Matrix<double, mpcWindow, N_S>               S;      // QP S
+    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;   // QP Sbar    
+    Eigen::Matrix<double, 2*mpcWindow, 1>               W0;     // QP W0
+    Eigen::SparseMatrix<double>                         Gbar;   // QP linear constraints matrix
 
+    // weight matrices 
+    Eigen::Matrix<double, N_O, N_O>                     Q;      // State cost
+    Eigen::Matrix<double, N_O, N_O>                     R;      // Control cost
+    Eigen::Matrix<double, N_O, N_O>                     RD;     // Change in control cost
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Qbar;   // Lifted state cost
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Rbar;   // Lifted control cost
+    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> RbarD;  // Lifted change in control cost
 
-    // constraint matrices 
-    Eigen::Matrix<double, 2*mpcWindow, 4>               Sbar;
-    Eigen::Matrix<double, 2*mpcWindow, 1>               W0;
-    Eigen::SparseMatrix<double>                         Gbar;
-
-    // weight matrices - Updated 
-    Eigen::Matrix<double, N_O, N_O>                     Q;    
-    Eigen::Matrix<double, N_O, N_O>                     R;    
-    Eigen::Matrix<double, N_O, N_O>                     RD;
-    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Qbar;    
-    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Rbar;
-    Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> RbarD;        
-
-    // Sx, Su, Su1, CAB, LL matrices  -- All updated other than Lu. Not used ? 
+    // Sx, Su, Su1, CAB, LL matrices
     Eigen::Matrix<double, N_C*mpcWindow, N_S>           Sx;
     Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Su;
     Eigen::Matrix<double, N_O*mpcWindow, N_O>           Su1;
@@ -192,30 +185,28 @@ public:
     Eigen::Matrix<double, mpcWindow*N_C, N_C>           Lu;
 
     // state and the reference signal
-    Eigen::Matrix<double, N_S, 1>                       X;
-    Eigen::Matrix<double, N_O, N_O>                     U;      // Control Vector
-    Eigen::Matrix<double, N_O, mpcWindow>               ref;
-    Eigen::Matrix<double, 1, N_S>                       K;
+    Eigen::Matrix<double, N_S, 1>                       X;      // State vector
+    Eigen::Matrix<double, N_O, N_O>                     U;      // Control vector
+    Eigen::Matrix<double, N_O, mpcWindow>               ref;    // Regerence vector
+    Eigen::Matrix<double, 1, N_S>                       K;      // LQR feedback law
 
     // QP problem matrices and vectors
-    Eigen::SparseMatrix<double>                         H;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C>           Fu;
-    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Fr;
-    Eigen::Matrix<double, N_C*mpcWindow, N_S>           Fx;
-    Eigen::Matrix<double, N_C*mpcWindow, 1>             f;
-    Eigen::Matrix<double, 2*mpcWindow, 1>               lb;
-    Eigen::Matrix<double, 2*mpcWindow, 1>               ub;    
+    Eigen::SparseMatrix<double>                         H;      // QP Hessian
+    Eigen::Matrix<double, N_C*mpcWindow, N_C>           Fu;     // Control component of QP gradient
+    Eigen::Matrix<double, N_C*mpcWindow, N_C*mpcWindow> Fr;     // Reference component of QP gradient
+    Eigen::Matrix<double, N_C*mpcWindow, N_S>           Fx;     // State component of QP gradient
+    Eigen::Matrix<double, N_C*mpcWindow, 1>             f;      // QP gradient
+    Eigen::Matrix<double, 2*mpcWindow, 1>               lb;     // QP lower bound
+    Eigen::Matrix<double, 2*mpcWindow, 1>               ub;     // QP upper bound
 
     // timing variables
     Eigen::Matrix<double, 1, mpcWindow> t;
     double t0, dt;
 
-    //  number of decisiona vars and constraints
-    int n_variables;
-    int n_constraints;  
+    int n_variables;        // number of decision variables
+    int n_constraints;      // number of constraints
 
-    // output verbosity
-    bool verbose;
+    bool verbose;           // output verbosity
 
     /**
      * Create a block diagonal matrix in the same style as MATLAB

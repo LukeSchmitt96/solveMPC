@@ -48,6 +48,7 @@ int main(int argc, char** argv)
         {
             // start = high_resolution_clock::now();
 
+            // update reference, QP problem, and update solution
             if(!mpc.controllerStep()) return 1;
 
             if(mpc.verbose)
