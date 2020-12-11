@@ -16,6 +16,7 @@ make install
 
 ## Get osqp:
 ```bash
+cd ~
 git clone --recursive https://github.com/oxfordcontrol/osqp
 cd osqp
 mkdir build
@@ -50,19 +51,19 @@ cmake .
 cmake --build ./
 ```
 
-For each subsequent build, just run:
+For each subsequent build, run the following command in the project directory:
 ```bash
 cmake --build ./
 ```
 
-To start solver:
+To start solver, run the following command in the project directory:
 ```bash
 ./solveMPC.cpp
 ```
 
 Note that you may need to run it once or twice before it 'takes'.
 
-Note that you can set a verbose output by adding a true or false flag to the command line statement. It is set to `false` by default.
+Note that you can set a verbose output by adding a true or false flag to the command line statement. It is set to `false` by default. A verbose output will output information like the QP problem matrices, the messages read from serial, the solution to the QP problem, etc.
 ```bash
-./solveMPC true
+./solveMPC true   #or false
 ```
