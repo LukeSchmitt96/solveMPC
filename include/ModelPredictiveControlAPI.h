@@ -144,6 +144,17 @@ public:
      */
     void c2d(double ts);
 
+    /**
+     * performs a controller step by solving the qp problem
+     *
+     * @returns solver success flag
+     */
+    bool controllerStep();
+
+    // OSQPEigen Solver
+    OsqpEigen::Solver solver;
+    bool solverFlag;
+
     // system matrices - Updated 
     Eigen::Matrix<double, N_S, N_S>                     A;
     Eigen::Matrix<double, N_S, 1>                       B;
@@ -182,6 +193,7 @@ public:
 
     // state and the reference signal
     Eigen::Matrix<double, N_S, 1>                       X;
+    Eigen::Matrix<double, N_O, N_O>                     U;      // Control Vector
     Eigen::Matrix<double, N_O, mpcWindow>               ref;
     Eigen::Matrix<double, 1, N_S>                       K;
 

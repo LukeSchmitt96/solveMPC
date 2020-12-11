@@ -1,22 +1,23 @@
 /**
  * @file solveMPC.cpp
  * @author Luke Schmitt
- * @date 2020
+ * @date October 2020
  */
 
 #define _GLIBCXX_USE_CXX11_ABI 0
 
-#include <chrono>
-
-#include "OsqpEigen/OsqpEigen.h"
-
 #include "ModelPredictiveControlAPI.h"
 #include "SerialPort.h"
-
-using namespace std::chrono;
+#include "solveMPC.h"
 
 int main(int argc, char** argv)
 {
+    ss << argv[1];
+
+    if(!(ss >> std::boolalpha >> verbose)) {
+        // Parsing error.
+    }
+
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << "[solveMPC]\tStarting MPC solver." << std::endl;
@@ -24,80 +25,13 @@ int main(int argc, char** argv)
     std::cout << std::endl;
 
     // instantiate mpc api object
-    ModelPredictiveControlAPI mpc(true);
+    ModelPredictiveControlAPI mpc(verbose);
+
+    if(!mpc.solverFlag){return 1;}
 
     // instantiate serial port object
     SerialPort sp("/dev/ttyUSB0");
 
-    // instantiate the solver object
-    OsqpEigen::Solver solver;
-
-    // solver settings
-    solver.settings()->setVerbosity(false);
-    solver.settings()->setWarmStart(true);
-
-    // set up the QP solver
-    solver.data()->setNumberOfVariables(mpc.n_variables);
-    solver.data()->setNumberOfConstraints(mpc.n_constraints);
-    if(!solver.data()->setHessianMatrix(mpc.H)) return 1;
-    if(!solver.data()->setGradient(mpc.f)) return 1;
-    // if(!solver.data()->setLinearConstraintsMatrix(mpc.Gbar)) return 1;
-    // if(!solver.data()->setLowerBound(mpc.lb)) return 1;
-    // if(!solver.data()->setUpperBound(mpc.ub)) return 1;
-
-    mpc.lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-    mpc.ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-
-
-
-
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-    
-    mpc.lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-    mpc.ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -Eigen::Infinity;
-    Eigen::MatrixXd Gbar_temp = Eigen::Matrix<double, 2*mpcWindow, N_S>::Zero();
-
-    mpc.Gbar.resize(2*mpcWindow, N_C*mpcWindow);
-    for(int i = 0; i<Gbar_temp.rows(); i++)
-    {
-        for(int j=0; j<Gbar_temp.cols(); j++)
-        {
-            mpc.Gbar.insert(i,j) = Gbar_temp(i,j);
-        }
-    }
-
-    mpc.Gbar.makeCompressed();
-
-    if(!solver.data()->setLinearConstraintsMatrix(mpc.Gbar)) return 1;
-    if(!solver.data()->setLowerBound(mpc.lb)) return 1;
-    if(!solver.data()->setUpperBound(mpc.ub)) return 1;
-
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-
-
-
-
-    // instantiate the solver
-    if(!solver.initSolver()) return 1;
-
-    // controller input and QPSolution vector
-    Eigen::Matrix<double, 1, 1> U;
-    Eigen::VectorXd QPSolution;
-
-    // set timinig variables
-    auto start = high_resolution_clock::now(), stop = high_resolution_clock::now();
-    
-    // set serial read variables
-    int num_bytes; 
-    char read_buf [40];
-
-    // while(true){
-    //     sp.sendInit();
-    // }
-
-    int count = 0;
 
     // enter loop
     std::cout << std::endl;
@@ -110,52 +44,31 @@ int main(int argc, char** argv)
 
     while(true)
     {
-
-        // get state by reading from serial
         if(sp.readPort(mpc.dt, mpc.X))  // check for valid message
         {
             // start = high_resolution_clock::now();
 
-            mpc.t0 += mpc.dt;
-
-            // update reference trajectory
-            // mpc.t = mpc.linspace(mpc.t0, mpc.t0+mpc.dt/1000.0*(mpcWindow-1), mpcWindow);
-            mpc.updateRef(10);
-
-            // update gradient and constraints
-            mpc.setF();
-            // if(!solver.updateGradient(mpc.f)) return 1;
-            // if(!solver.updateUpperBound(mpc.W0+mpc.Sbar*mpc.X)) return 1;
-
-            // solve the QP problem
-            if(!solver.solve()) return 1;
-            
-            // get the controller input
-            QPSolution = solver.getSolution();
-
-            // TODO: add gain to the U and the X term
-            // TODO: add ff term, just control signal propogated through the system
-
-            U = QPSolution.block<N_C, 1>(0, 0);
-
-            // Xact = mpc.Ad*mpc.X + mpc.Bd*U
+            if(!mpc.controllerStep()) return 1;
 
             if(mpc.verbose)
             {
-                std::cout << "[solveMPC]\t" << "Control output: " << U.transpose() << std::endl;
+                std::cout << "[solveMPC]\t" << "Current state: " << mpc.X.transpose() << std::endl;
+                std::cout << "[solveMPC]\t" << "Control output: " << mpc.U.transpose() << std::endl;
             }
             
-            sp.writePort(U);
+            sp.writePort(-mpc.U);
 
             count++;
 
             // stop = high_resolution_clock::now();
             
             // std::cout << "[solveMPC]\t" << "Cycle time: " << duration_cast<milliseconds>(stop - start).count() << "ms" << std::endl;
+
+            printf("\n");
         }
         else
         {
-            sp.writePort(U);
+            sp.writePort(mpc.U);
         }
         
     }
