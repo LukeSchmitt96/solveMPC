@@ -3,12 +3,19 @@
 ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
 {
 
-    std::cout << "[MPC API]\t MPC API object created." << std::endl;
+    std::cout << "[MPC API]\tMPC API object created." << std::endl;
 
     verbose = verbose_;
     solverFlag = true;
 
-    K << -50.0, -150.0, 4000.0, 250.0;
+
+
+
+    std::ifstream file("./config/MPC_API.json");
+    cfg = json::parse(file);
+
+    K = from_json(cfg["K"], K.rows(), K.cols());
+
     W0 = 255.0 * Eigen::Matrix<double, 2*mpcWindow, 1>::Ones();
 
     // set arbitraty (to be filled) variables
@@ -21,26 +28,26 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
 
 
     /** some of the following functions are commented out
-     *      because we are not constraining the output
+     *      because we are not constraining the output right now
     */
 
     setSystemVars();
-    setQ_R_RD();
-    computeQbar_Rbar_RbarD();
-    computeSx_Su_Su1_CAB();
+    setCosts();
+    setLiftedCosts();
+    setTransformations();
     setLL();
-    computeH();
+    setH();
     // setLu();
     setFVars(); 
-    // computeS();
-    // computeSbar();
-    // computeGbar();
+    // setS();
+    // setSbar();
+    // setGbar();
     updateRef(0.0);
     setF();
 
     ub = W0+Sbar*X;
 
-    std::cout << "[MPC API]\t All QP matrices built successfully." << std::endl;
+    std::cout << "[MPC API]\tAll QP matrices built successfully." << std::endl;
 
     n_variables = N_O*mpcWindow;
     n_constraints = 2*mpcWindow;
@@ -49,6 +56,7 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     // solver settings
     solver.settings()->setVerbosity(verbose);
     solver.settings()->setWarmStart(true);
+    solver.settings()->setTimeLimit(0.05);
 
     solver.data()->setNumberOfVariables(n_variables);
     solver.data()->setNumberOfConstraints(n_constraints);
@@ -76,9 +84,6 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     }
     Gbar.makeCompressed();
 
-    std::cout << n_constraints << std::endl;
-    std::cout << Gbar_temp.size() << std::endl;
-
     if(!solver.data()->setLinearConstraintsMatrix(Gbar))    {solverFlag = false; return;};
     if(!solver.data()->setLowerBound(lb))                   {solverFlag = false; return;};
     if(!solver.data()->setUpperBound(ub))                   {solverFlag = false; return;};
@@ -101,14 +106,14 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
 
 ModelPredictiveControlAPI::~ModelPredictiveControlAPI()
 {
-    printf("[MPC API]\t Destructing MPC API object...\n");
+    printf("[MPC API]\tDestructing MPC API object...\n");
 }
 
 
 void ModelPredictiveControlAPI::setVerbosity(bool verbose_)
 {
     verbose = verbose_;
-    std::cout << "[MPC API]\t Verbosity set to " << verbose << std::endl;
+    std::cout << "[MPC API]\tVerbosity set to " << verbose << std::endl;
 }
 
 
@@ -141,24 +146,14 @@ bool ModelPredictiveControlAPI::controllerStep()
 
 void ModelPredictiveControlAPI::setSystemVars()
 {
-    Ad <<   1.00001778004125,       0.00505320517549851,    -0.0014579033084379,    -9.14586695703811e-05,
-            0.00631068462774803,    1.01889078789663,       -0.525176404883372,     -0.0330113264471781,
-            0.000300335964611163,   0.000898728268207066,    0.978168996256657,      0.00345977076140498,
-            0.10666260164028,       0.319290150442394,      -7.75759238566293,       0.444855988055254;
-
-
-    Bd <<   -1.77800412462243e-05,
-            -0.00631068462774803,
-            -0.000300335964611163,
-            -0.10666260164028;
-
-    Cd << 1, 0, 0, 0;
-
-    Dd << 0; 
+    Ad = from_json(cfg["Ad"], Ad.rows(), Ad.cols());
+    Bd = from_json(cfg["Bd"], Bd.rows(), Bd.cols());
+    Cd = from_json(cfg["Cd"], Cd.rows(), Cd.cols());
+    Dd = from_json(cfg["Dd"], Dd.rows(), Dd.cols());
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t System variables created."   << std::endl;
+        std::cout << "[MPC API]\tSystem variables created."   << std::endl;
 
         std::cout << "Ad rows: " << Ad.rows() << "\tAd cols: " << Ad.cols()  << std::endl;
         std::cout << "Ad:" << std::endl << Ad << std::endl << std::endl;
@@ -174,15 +169,15 @@ void ModelPredictiveControlAPI::setSystemVars()
     }
 }
 
-void ModelPredictiveControlAPI::setQ_R_RD()
+void ModelPredictiveControlAPI::setCosts()
 {
-    Q << 50.0; 
-    R << 1.0 / 30;
-    RD << 5.0;
+    Q  = from_json(cfg["Q"],  Q.rows(),  Q.cols());
+    R  = from_json(cfg["R"],  R.rows(),  R.cols());
+    RD = from_json(cfg["RD"], RD.rows(), RD.cols());
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t Set Q, R, and RD matrices created."  << std::endl;
+        std::cout << "[MPC API]\tSet Q, R, and RD matrices created."  << std::endl;
 
         std::cout << "Q rows: " << Q.rows() << "\tQ cols: " << Q.cols()  << std::endl;
         std::cout << "Q:"  << std::endl << Q  << std::endl << std::endl;
@@ -196,7 +191,7 @@ void ModelPredictiveControlAPI::setQ_R_RD()
 }
 
 
-void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD()
+void ModelPredictiveControlAPI::setLiftedCosts()
 {
     Qbar = blkdiag(Q, mpcWindow);
     Rbar = blkdiag(R, mpcWindow);
@@ -204,7 +199,7 @@ void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD()
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t Lifted weight matrices created."   << std::endl;
+        std::cout << "[MPC API]\tLifted weight matrices created."   << std::endl;
 
         std::cout << "Qbar rows: " << Qbar.rows() << "\tQbar cols: " << Qbar.cols()  << std::endl;
         std::cout << "Qbar:"  << std::endl << Qbar  << std::endl << std::endl;
@@ -218,7 +213,7 @@ void ModelPredictiveControlAPI::computeQbar_Rbar_RbarD()
 }
 
 
-void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
+void ModelPredictiveControlAPI::setTransformations()
 {
     Sx  = Eigen::MatrixXd::Zero(Sx.rows(),  Sx.cols());
     Su  = Eigen::MatrixXd::Zero(Su.rows(),  Su.cols());
@@ -247,7 +242,7 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t Sx Su, Su1, CAB created"       << std::endl;
+        std::cout << "[MPC API]\tSx Su, Su1, CAB created"       << std::endl;
 
         std::cout << "Sx rows: " << Sx.rows() << "\tSx cols: " << Sx.cols()  << std::endl;
         std::cout << "Sx:"    << std::endl << Sx    << std::endl << std::endl;
@@ -264,7 +259,7 @@ void ModelPredictiveControlAPI::computeSx_Su_Su1_CAB()
 }
 
 
-void ModelPredictiveControlAPI::computeH()
+void ModelPredictiveControlAPI::setH()
 {
     Eigen::MatrixXd H_temp_1, H_temp_2;
     H_temp_1 = 2*(LL.transpose() * Rbar * LL + RbarD + Su.transpose() * Qbar * Su);
@@ -284,7 +279,7 @@ void ModelPredictiveControlAPI::computeH()
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t Hessian H created." << std::endl;
+        std::cout << "[MPC API]\tHessian H created." << std::endl;
         std::cout << "H rows: " << H_temp_1.rows() << "\tH cols: " << H_temp_1.cols()  << std::endl;
         std::cout << "H:" << std::endl << H_temp_1 << std::endl  << std::endl;
     }
@@ -301,7 +296,7 @@ void ModelPredictiveControlAPI::setLu()
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t Lu created." << std::endl;
+        std::cout << "[MPC API]\tLu created." << std::endl;
         std::cout << "Lu rows: " << Lu.rows() << "\tLu cols: " << Lu.cols()  << std::endl;
         std::cout << "Lu:" << std::endl << Lu << std::endl  << std::endl;
     }
@@ -323,7 +318,7 @@ void ModelPredictiveControlAPI:: setLL()
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t LL created."   << std::endl;
+        std::cout << "[MPC API]\tLL created."   << std::endl;
         std::cout << "LL rows: " << LL.rows() << "\tLL cols: " << LL.cols()  << std::endl;
         std::cout << "LL:" << std::endl << LL << std::endl  << std::endl;
     }
@@ -340,7 +335,7 @@ void ModelPredictiveControlAPI::setFVars()
 
     if(verbose)
     {
-        std::cout << "[MPC API]\t Components of F created."   << std::endl;
+        std::cout << "[MPC API]\tComponents of F created."   << std::endl;
 
         std::cout << "Fu rows: " << Fu.rows() << "\tFu cols: " << Fu.cols()  << std::endl;
         std::cout << "Fu:" << std::endl << Fu << std::endl  << std::endl;
@@ -355,7 +350,7 @@ void ModelPredictiveControlAPI::setFVars()
 }
 
 
-// void ModelPredictiveControlAPI::computeS()
+// void ModelPredictiveControlAPI::setS()
 // {
 //     for(int i=0; i<mpcWindow; i++)
 //     {
@@ -364,25 +359,25 @@ void ModelPredictiveControlAPI::setFVars()
 
 //     if(verbose)
 //     {
-//         std::cout << "[MPC API]\t S created."   << std::endl;
+//         std::cout << "[MPC API]\tS created."   << std::endl;
 //         std::cout << "S:" << std::endl << S << std::endl  << std::endl;
 //     }
 // }
 
 
-// void ModelPredictiveControlAPI::computeSbar()
+// void ModelPredictiveControlAPI::setSbar()
 // {
 //     Sbar << S, -S;
 
 //     if(verbose)
 //     {
-//         std::cout << "[MPC API]\t Sbar created."   << std::endl;
+//         std::cout << "[MPC API]\tSbar created."   << std::endl;
 //         std::cout << "Sbar:" << std::endl << Sbar << std::endl  << std::endl;
 //     }
 // }
 
 
-// void ModelPredictiveControlAPI::computeG()
+// void ModelPredictiveControlAPI::setG()
 // {
 //     Eigen::Matrix<double, N_S, N_C> AiB;
 //     AiB = Eigen::Matrix<double, N_S, N_C>::Zero();
@@ -406,13 +401,13 @@ void ModelPredictiveControlAPI::setFVars()
 
 //     if(verbose)
 //     {
-//         std::cout << "[MPC API]\t G created."   << std::endl;
+//         std::cout << "[MPC API]\tG created."   << std::endl;
 //         std::cout << "G:" << std::endl << G << std::endl  << std::endl;
 //     }
 // }
 
 
-// void ModelPredictiveControlAPI::computeGbar()
+// void ModelPredictiveControlAPI::setGbar()
 // {
 //     Eigen::Matrix<double, 2*mpcWindow, N_C*mpcWindow> Gbar_temp;
 //     Gbar_temp << G, -G;
@@ -430,7 +425,7 @@ void ModelPredictiveControlAPI::setFVars()
 
 //     if(verbose)
 //     {
-//         std::cout << "[MPC API]\t Gbar created."   << std::endl;
+//         std::cout << "[MPC API]\tGbar created."   << std::endl;
 //         std::cout << "Gbar:" << std::endl << Gbar_temp << std::endl  << std::endl;
 //     }
 // }
@@ -581,4 +576,77 @@ Eigen::Matrix<double, 1, mpcWindow> ModelPredictiveControlAPI::linspace(double s
                                 // are exactly the same as the input
         
     return linspaced;
+}
+
+Eigen::MatrixXd ModelPredictiveControlAPI::from_json(const nlohmann::json& jsonObject, int rows, int cols)
+{
+    Eigen::MatrixXd matrix(rows, cols);
+
+    nlohmann::json jsonArray;
+    if ( jsonObject.is_array( ) )
+    {
+        if ( jsonObject.empty( ) )
+        {
+            return matrix;
+        }
+        jsonArray = jsonObject;
+    }
+    else if ( jsonObject.is_number( ) )
+    {
+        jsonArray.push_back( jsonObject );
+    }
+    else
+    {
+        throw nlohmann::detail::type_error::create( 0, "" );
+    }
+
+    nlohmann::json jsonArrayOfArrays;
+    if ( jsonArray.front( ).is_array( ) )  // provided matrix
+    {
+        jsonArrayOfArrays = jsonArray;
+    }
+    else  // provided vector
+    {
+        if ( rows == 1 )  // expected row vector
+        {
+            jsonArrayOfArrays.push_back( jsonArray );
+        }
+        else if ( cols == 1 )  // expected column vector
+        {
+            for ( unsigned int i = 0; i < jsonArray.size( ); ++i )
+            {
+                jsonArrayOfArrays.push_back( { jsonArray.at( i ) } );
+            }
+        }
+        else  // expected matrix
+        {
+            std::cerr << "Expected a matrix, received a vector." << std::endl;
+            throw nlohmann::detail::type_error::create( 0, "" );
+        }
+    }
+
+    const unsigned int providedRows = jsonArrayOfArrays.size( );
+    const unsigned int providedCols = jsonArrayOfArrays.front( ).size( );
+    if ( ( rows >= 0 && int( providedRows ) != rows ) || ( cols >= 0 && int( providedCols ) != cols ) )
+    {
+        std::cerr << "Expected matrix of size " << rows << "x" << cols
+                << ", received matrix of size " << providedRows << "x" << providedCols << "." << std::endl;
+        throw nlohmann::detail::type_error::create( 0, "" );
+    }
+
+    matrix.resize( providedRows, providedCols );
+    for ( unsigned int r = 0; r < providedRows; ++r )
+    {
+        if ( jsonArrayOfArrays.at( r ).size( ) != providedCols )
+        {
+            std::cerr << "Unconsistent matrix size: some rows have different number of columns." << std::endl;
+            throw nlohmann::detail::type_error::create( 0, "" );
+        }
+        for ( unsigned int c = 0; c < providedCols; ++c )
+        {
+            matrix( r, c ) = jsonArrayOfArrays.at( r ).at( c );
+        }
+    }
+
+    return matrix;
 }

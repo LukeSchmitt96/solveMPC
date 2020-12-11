@@ -12,17 +12,18 @@
 
 int main(int argc, char** argv)
 {
-    ss << argv[1];
-
-    if(!(ss >> std::boolalpha >> verbose)) {
-        // Parsing error.
-    }
-
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << "[solveMPC]\tStarting MPC solver." << std::endl;
     std::cout << std::endl;;
     std::cout << std::endl;
+
+    // parse argv and pull out verbose if it exists
+    ss << argv[1];
+    if(!(ss >> std::boolalpha >> verbose)) {
+        std::cout << "[solveMPC]\tInvalid verbosity." << std::endl;
+    }
+
 
     // instantiate mpc api object
     ModelPredictiveControlAPI mpc(verbose);
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
     SerialPort sp("/dev/ttyUSB0");
 
 
-    // enter loop
+    // enter solver loop
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << "----------------------------------------------------" << std::endl;
@@ -51,14 +52,17 @@ int main(int argc, char** argv)
             // update reference, QP problem, and update solution
             if(!mpc.controllerStep()) return 1;
 
+            // print out state and output
             if(mpc.verbose)
             {
                 std::cout << "[solveMPC]\t" << "Current state: " << mpc.X.transpose() << std::endl;
                 std::cout << "[solveMPC]\t" << "Control output: " << mpc.U.transpose() << std::endl;
             }
             
+            // send control signal to controller
             sp.writePort(-mpc.U);
 
+            // iterate step count
             count++;
 
             // stop = high_resolution_clock::now();
@@ -69,6 +73,7 @@ int main(int argc, char** argv)
         }
         else
         {
+            // send control signal to controller
             sp.writePort(mpc.U);
         }
         

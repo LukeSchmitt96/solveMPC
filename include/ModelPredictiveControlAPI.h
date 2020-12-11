@@ -14,6 +14,9 @@
 #include <Eigen/Dense>
 #include <unsupported/Eigen/MatrixFunctions>
 
+// json api
+#include <nlohmann/json.hpp>
+
 
 /* ------------------------------------------------------------ */
 /* ----------------- Parameters and Helpers ------------------- */
@@ -29,7 +32,16 @@ const int N_O = 1;                  // number of outputs
 // timing parameters
 const double Ts = 100;              // square wave period
 
-// MPC API Class
+/* ------------------------------------------------------------ */
+/* ------------------------ json API -------------------------- */
+/* ------------------------------------------------------------ */
+
+using json = nlohmann::json;
+
+/* ------------------------------------------------------------ */
+/* ---------------------- MPC API Class ----------------------- */
+/* ------------------------------------------------------------ */
+
 class ModelPredictiveControlAPI 
 {
 
@@ -60,22 +72,22 @@ public:
      * Set the state, control, and change in control weight matrices based
      *      on weight inputs
      */
-    void setQ_R_RD();
+    void setCosts();
 
     /**
      * Set the lifted state, control, and change in control weight matrices
      */
-    void computeQbar_Rbar_RbarD();
+    void setLiftedCosts();
 
     /**
      * Complete lifted dynamics transform matrices
      */
-    void computeSx_Su_Su1_CAB();       
+    void setTransformations();       
 
     /**
      * Compute hessian for the QP problem
      */    
-    void computeH();
+    void setH();
 
     /**
      * Compute components for the qp gradient  
@@ -85,22 +97,22 @@ public:
     /**
      * Compute S
      */
-    void computeS();      
+    void setS();      
 
     /**
      * Compute Sbar
      */
-    void computeSbar(); 
+    void setSbar(); 
 
     /**
      * Compute G
      */
-    void computeG();
+    void setG();
 
     /**
      * Compute constraints components for the qp problem
      */
-    void computeGbar();          
+    void setGbar();          
 
     /**
      * compute gradient for the qp problem
@@ -208,6 +220,8 @@ public:
 
     bool verbose;           // output verbosity
 
+    json cfg;   // configuration from json file
+
     /**
      * Create a block diagonal matrix in the same style as MATLAB
      * 
@@ -227,4 +241,15 @@ public:
      * @param num_in number of samples to generate 
      */
     Eigen::Matrix<double, 1, mpcWindow> linspace(double start_in, double end_in, int num_in);
+
+    /**
+     * Create a matrix from json data
+     * 
+     * @param jsonObject json data type to be converted from
+     * 
+     * @param int number of rows in destination matrix
+     * 
+     * @param int number of columns in destination matrix
+     */
+    Eigen::MatrixXd from_json(const nlohmann::json& jsonObject, int rows, int cols);
 };

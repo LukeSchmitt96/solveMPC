@@ -14,7 +14,7 @@
 
 SerialPort::SerialPort(const char* port_name)
 {
-    std::cout << "[SerialPort]\t Attempting connection to serial port "
+    std::cout << "[SerialPort]\tAttempting connection to serial port "
               << port_name
               << "\"." << std::endl;
 
@@ -28,13 +28,13 @@ SerialPort::SerialPort(const char* port_name)
         //     return;
         // }
 
-        printf("[SerialPort]\t Error %i from open: %s. Reattempting connection...\n", errno, strerror(errno));
+        printf("[SerialPort]\tError %i from open: %s. Reattempting connection...\n", errno, strerror(errno));
         sleep(1);
         serial_port = open(port_name, O_RDWR);
         attempt++;
     }
     
-    printf("[SerialPort]\t Serial port opened successfully.\n");
+    printf("[SerialPort]\tSerial port opened successfully.\n");
     
      
     // Read in existing settings, and handle any error
@@ -73,14 +73,14 @@ SerialPort::SerialPort(const char* port_name)
     // Save tty settings, also checking for error
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) 
     {
-        printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+        printf("[SerialPort]\tError %i from tcsetattr: %s\n", errno, strerror(errno));
     }
 }
 
 
 SerialPort::~SerialPort()
 {
-    printf("[SerialPort]\t Destructing Serial Port Communication Object.\n");
+    printf("[SerialPort]\tDestructing Serial Port Communication Object.\n");
     close(serial_port);
 }
 
