@@ -5,12 +5,8 @@ The required dependencies are:
 - Eigen3 is already included in this repo and since it only includes header files, we don't need to build it.
 
 ## Get cmake:
-- Download files from [here](https://github.com/Kitware/CMake/releases/download/v3.19.1/cmake-3.19.1.tar.gz).
-- Extract the files, enter the directory in the command line and run:
 ```bash
-./bootstrap
-make
-make install
+sudo apt-get install cmake -y
 ```
 
 ## Get Eigen:
@@ -27,7 +23,7 @@ mkdir build
 cd build
 cmake -G "Unix Makefiles" ..
 cmake --build .
-cmake --build . --target install
+sudo cmake --build . --target install
 ```
 
 ## Get osqp-eigen:
@@ -71,4 +67,9 @@ Note that you may need to run it once or twice before it 'takes'.
 Note that you can set a verbose output by adding a true or false flag to the command line statement. It is set to `false` by default. A verbose output will output information like the QP problem matrices, the messages read from serial, the solution to the QP problem, etc.
 ```bash
 ./solveMPC true   #or false
+```
+
+To check which serial port on PI is connected to Arduino, run the following command and update solveMPC.cpp accordingly
+```bash
+dmesg | grep tty
 ```
