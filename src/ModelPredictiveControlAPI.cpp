@@ -215,34 +215,39 @@ void ModelPredictiveControlAPI::setLiftedCosts()
 
 void ModelPredictiveControlAPI::setTransformations()
 {
-    Sx  = Eigen::MatrixXd::Zero(Sx.rows(),  Sx.cols());
-    Su  = Eigen::MatrixXd::Zero(Su.rows(),  Su.cols());
-    Su1 = Eigen::MatrixXd::Zero(Su1.rows(), Su1.cols());
-    CAB = Eigen::MatrixXd::Zero(CAB.rows(), CAB.cols());
+    CAiB = Eigen::MatrixXd::Zero(N_S, N_O);
+    Su_full = Eigen::MatrixXd::Zero(Su_full.rows(), Su_full.cols());
+
+    for(int i=0; i<10; i++) {S.block<1,N_S>(i,0) = K;}
 
     for(int i=0; i<mpcWindow; i++)
     {
         Sx.block<N_O, N_S>(i*N_O,0) = Cd*Ad.pow(i+1);
         CAB.block<N_C,N_O>(i*N_O,0) = Cd*Ad.pow(i)*Bd;
+
+        CAiB += Eigen::Matrix<double, N_S, N_S>::Identity() * Ad.pow(i) * Bd;
+        CAB_full.block<N_S, N_O>(i*N_S,0) = CAiB;
     }
+    Eigen::VectorXd CAB_Vector(Eigen::Map<Eigen::VectorXd>(CAB.data(), CAB.cols() * CAB.rows()));
 
-    Eigen::VectorXd CAB_Vector(Eigen::Map<Eigen::VectorXd>(CAB.data(), CAB.cols()*CAB.rows()));
-
-    // compute Su
-    for(int i=0; i<Su.rows(); i++)
+    for(int i=0; i<mpcWindow; i++)
     {
-        // TODO: IS THIS RIGHT??
+        std::cout << i << std::endl;
         for(int j=0; j<=i; j++)
         {
+            std::cout << j << std::endl;
             Su(i,j) = CAB_Vector.segment(0,i-j+1).sum();
+            Su_full.block<N_S, 1>(N_S*i, j) = CAB_full.block(4*(i-j), 0, N_S, N_O);
         }
     }
 
     Su1 = Su.leftCols<N_O>();
+    Su_full1 = Su_full.leftCols<N_O>();
+    Sbar << S, -S;
 
     if(verbose)
     {
-        std::cout << "[MPC API]\tSx Su, Su1, CAB created"       << std::endl;
+        std::cout << "[MPC API]\tTransformation matrices created" << std::endl;
 
         std::cout << "Sx rows: " << Sx.rows() << "\tSx cols: " << Sx.cols()  << std::endl;
         std::cout << "Sx:"    << std::endl << Sx    << std::endl << std::endl;
@@ -250,11 +255,43 @@ void ModelPredictiveControlAPI::setTransformations()
         std::cout << "CAB rows: " << CAB.rows() << "\tCAB cols: " << CAB.cols()  << std::endl;
         std::cout << "CAB:"   << std::endl << CAB   << std::endl << std::endl;
 
+        std::cout << "CAiB rows: " << CAiB.rows() << "\tCAiB cols: " << CAiB.cols()  << std::endl;
+        std::cout << "CAiB:"   << std::endl << CAiB   << std::endl << std::endl;
+
+        std::cout << "CAB_full rows: " << CAB_full.rows() << "\tCAB_full cols: " << CAB_full.cols()  << std::endl;
+        std::cout << "CAB_full:"   << std::endl << CAB_full   << std::endl << std::endl;
+
+        std::cout << "S rows: " << S.rows() << "\tS cols: " << S.cols()  << std::endl;
+        std::cout << "S:" << std::endl << S << std::endl  << std::endl;
+
         std::cout << "Su rows: " << Su.rows() << "\tSu cols: " << Su.cols()  << std::endl;
         std::cout << "Su:"    << std::endl << Su    << std::endl << std::endl;
 
         std::cout << "Su1 rows: " << Su1.rows() << "\tSu1 cols: " << Su1.cols()  << std::endl;
         std::cout << "Su1:"   << std::endl << Su1   << std::endl << std::endl;
+
+        std::cout << "Su_full rows: " << Su_full.rows() << "\tSu1 cols: " << Su_full.cols()  << std::endl;
+        std::cout << "Su_full:"   << std::endl << Su_full   << std::endl << std::endl;
+
+        std::cout << "Su_full1 rows: " << Su_full1.rows() << "\tSu1 cols: " << Su_full1.cols()  << std::endl;
+        std::cout << "Su_full1:"   << std::endl << Su_full1   << std::endl << std::endl;
+
+        std::cout << "Sbar rows: " << Sbar.rows() << "\tSbar cols: " << Sbar.cols()  << std::endl;
+        std::cout << "Sbar:" << std::endl << Sbar << std::endl  << std::endl;        
+    }
+}
+
+
+void ModelPredictiveControlAPI::setS()
+{
+    for(int i=0; i<mpcWindow; i++)
+    {
+        
+    }
+
+    if(verbose)
+    {
+        std::cout << "[MPC API]\tS created."   << std::endl;
     }
 }
 
@@ -286,6 +323,7 @@ void ModelPredictiveControlAPI::setH()
     
 }
 
+
 void ModelPredictiveControlAPI::setLu()
 {
     for(int i=0; i<mpcWindow; i++)
@@ -304,16 +342,7 @@ void ModelPredictiveControlAPI::setLu()
 
 
 void ModelPredictiveControlAPI:: setLL()
-{
-    // Eigen::Matrix<double, N_S, N_S> tempEye = Eigen::Matrix<double, N_S, N_S>::Identity();
-
-    // std::cout << tempEye << std::endl;
-
-    // Eigen::Matrix<double, N_S*mpcWindow, N_S*mpcWindow > tempRep = tempEye.replicate(mpcWindow,mpcWindow);
-
-
-    // std::cout << tempRep << std::endl;
-    
+{    
     LL = Eigen::MatrixXd(Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow>::Ones().triangularView<Eigen::Lower>());
 
     if(verbose)
@@ -322,7 +351,6 @@ void ModelPredictiveControlAPI:: setLL()
         std::cout << "LL rows: " << LL.rows() << "\tLL cols: " << LL.cols()  << std::endl;
         std::cout << "LL:" << std::endl << LL << std::endl  << std::endl;
     }
-    
 } 
 
 
@@ -350,19 +378,7 @@ void ModelPredictiveControlAPI::setFVars()
 }
 
 
-// void ModelPredictiveControlAPI::setS()
-// {
-//     for(int i=0; i<mpcWindow; i++)
-//     {
-//         S.block<1,N_S>(i,0) = -K*Ad.pow(i+1);
-//     }
 
-//     if(verbose)
-//     {
-//         std::cout << "[MPC API]\tS created."   << std::endl;
-//         std::cout << "S:" << std::endl << S << std::endl  << std::endl;
-//     }
-// }
 
 
 // void ModelPredictiveControlAPI::setSbar()

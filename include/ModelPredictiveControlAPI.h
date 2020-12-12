@@ -192,7 +192,12 @@ public:
     Eigen::Matrix<double, N_C*mpcWindow, N_S>           Sx;
     Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> Su;
     Eigen::Matrix<double, N_O*mpcWindow, N_O>           Su1;
+    Eigen::Matrix<double, N_S*mpcWindow, N_O*mpcWindow> Su_full;
+    Eigen::Matrix<double, N_S*mpcWindow, 1> Su_full1;
     Eigen::Matrix<double, N_C*mpcWindow, N_C>           CAB;
+    Eigen::Matrix<double, N_S, N_O>                     CAiB;
+    Eigen::Matrix<double, N_S*mpcWindow, N_O>           CAB_full;
+
     Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow> LL;
     Eigen::Matrix<double, mpcWindow*N_C, N_C>           Lu;
 

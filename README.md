@@ -13,6 +13,10 @@ make
 make install
 ```
 
+## Get Eigen:
+```bash
+sudo apt-get install libeigen3-dev -y
+```
 
 ## Get osqp:
 ```bash
@@ -40,6 +44,7 @@ sudo make install
 ## Get solveMPC
 Once all dependencies are installed, clone the repo using:
 ```bash
+cd ~
 git clone https://github.com/LukeSchmitt96/solveMPC.git
 ```
 
