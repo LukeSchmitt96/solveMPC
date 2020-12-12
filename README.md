@@ -5,12 +5,8 @@ The required dependencies are:
 - Eigen3 is already included in this repo and since it only includes header files, we don't need to build it.
 
 ## Get cmake:
-- Download files from [here](https://github.com/Kitware/CMake/releases/download/v3.19.1/cmake-3.19.1.tar.gz).
-- Extract the files, enter the directory in the command line and run:
 ```bash
-./bootstrap
-make
-make install
+sudo apt-get install cmake -y
 ```
 
 ## Get Eigen:
