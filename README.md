@@ -68,3 +68,8 @@ Note that you can set a verbose output by adding a true or false flag to the com
 ```bash
 ./solveMPC true   #or false
 ```
+
+To check which serial port on PI is connected to Arduino, run the following command and update solveMPC.cpp accordingly
+```bash
+dmesg | grep tty
+```
