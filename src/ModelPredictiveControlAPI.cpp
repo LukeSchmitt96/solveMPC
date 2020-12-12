@@ -37,15 +37,15 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     setTransformations();
     setLL();
     setH();
-    // setLu();
-    setFVars(); 
-    // setS();
-    // setSbar();
-    // setGbar();
-    updateRef(0.0);
+    setLu();
+    setFVars();
+    setLinearConstraints();
+    setUpperBound();
+    updateRef(10.0);
     setF();
 
-    ub = W0+Sbar*X;
+    lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+    ub = W0 + Sbar*X + Ku*U;
 
     std::cout << "[MPC API]\tAll QP matrices built successfully." << std::endl;
 
@@ -56,46 +56,48 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     // solver settings
     solver.settings()->setVerbosity(verbose);
     solver.settings()->setWarmStart(true);
-    solver.settings()->setTimeLimit(0.05);
+    solver.settings()->setTimeLimit(0.08);
 
     solver.data()->setNumberOfVariables(n_variables);
     solver.data()->setNumberOfConstraints(n_constraints);
 
     lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-    ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-
 
 
     // this sets the qp problem as unconstrained!!
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
     
-    lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-    ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -Eigen::Infinity;
-    Eigen::Matrix<double, 2*mpcWindow, N_S> Gbar_temp = Eigen::Matrix<double, 2*mpcWindow, N_S>::Zero();
+    // lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+    // ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -Eigen::Infinity;
+    // Eigen::Matrix<double, 2*mpcWindow, N_S> Gbar_temp = Eigen::Matrix<double, 2*mpcWindow, N_S>::Zero();
 
-    Gbar.resize(2*mpcWindow, N_C*mpcWindow);
-    for(int i = 0; i<Gbar_temp.rows(); i++)
-    {
-        for(int j=0; j<Gbar_temp.cols(); j++)
-        {
-            Gbar.insert(i,j) = Gbar_temp(i,j);
-        }
-    }
-    Gbar.makeCompressed();
+    // Gbar.resize(2*mpcWindow, N_C*mpcWindow);
+    // for(int i = 0; i<Gbar_temp.rows(); i++)
+    // {
+    //     for(int j=0; j<Gbar_temp.cols(); j++)
+    //     {
+    //         Gbar.insert(i,j) = Gbar_temp(i,j);
+    //     }
+    // }
+    // Gbar.makeCompressed();
 
-    if(!solver.data()->setLinearConstraintsMatrix(Gbar))    {solverFlag = false; return;};
-    if(!solver.data()->setLowerBound(lb))                   {solverFlag = false; return;};
-    if(!solver.data()->setUpperBound(ub))                   {solverFlag = false; return;};
+    // if(!solver.data()->setLinearConstraintsMatrix(Gbar))    {solverFlag = false; return;};
+    // if(!solver.data()->setLowerBound(lb))                   {solverFlag = false; return;};
+    // if(!solver.data()->setUpperBound(ub))                   {solverFlag = false; return;};
 
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
     // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
 
-
+    std::cout << Gbar.rows() << " " << Gbar.cols() << std::endl;
+    std::cout << n_constraints << " " << n_variables << std::endl;
 
 
     if(!solver.data()->setHessianMatrix(H))                 {solverFlag = false; return;};
     if(!solver.data()->setGradient(f))                      {solverFlag = false; return;};
+    if(!solver.data()->setLinearConstraintsMatrix(Gbar))    {solverFlag = false; return;};
+    if(!solver.data()->setLowerBound(lb))                   {solverFlag = false; return;};
+    if(!solver.data()->setUpperBound(ub))                   {solverFlag = false; return;};
 
 
     // instantiate the solver
@@ -122,17 +124,20 @@ bool ModelPredictiveControlAPI::controllerStep()
     // update time vector
     t0 += dt;
 
-    // set reference (for now just hold at 10.0)
+    // recalculate reference (for now just hold at 10.0)
     updateRef(10.0);
 
     // calculate new F based on ref, U and X
     setF();
 
+    // recalculate upper bound constraints
+    setUpperBound();
+
     // update F
     if(!solver.updateGradient(f)) return false;
 
-    // // update upper bound based on X
-    // if(!solver.updateUpperBound(W0+Sbar*X)) return false;
+    // update upper bound based on X            W0+S*x+Ku*U,
+    if(!solver.updateUpperBound(W0 + Sbar*X + Ku*U)) return false;
 
     // solve the QP problem
     if(!solver.solve()) return false;
@@ -232,10 +237,8 @@ void ModelPredictiveControlAPI::setTransformations()
 
     for(int i=0; i<mpcWindow; i++)
     {
-        std::cout << i << std::endl;
         for(int j=0; j<=i; j++)
         {
-            std::cout << j << std::endl;
             Su(i,j) = CAB_Vector.segment(0,i-j+1).sum();
             Su_full.block<N_S, 1>(N_S*i, j) = CAB_full.block(4*(i-j), 0, N_S, N_O);
         }
@@ -278,20 +281,6 @@ void ModelPredictiveControlAPI::setTransformations()
 
         std::cout << "Sbar rows: " << Sbar.rows() << "\tSbar cols: " << Sbar.cols()  << std::endl;
         std::cout << "Sbar:" << std::endl << Sbar << std::endl  << std::endl;        
-    }
-}
-
-
-void ModelPredictiveControlAPI::setS()
-{
-    for(int i=0; i<mpcWindow; i++)
-    {
-        
-    }
-
-    if(verbose)
-    {
-        std::cout << "[MPC API]\tS created."   << std::endl;
     }
 }
 
@@ -378,73 +367,82 @@ void ModelPredictiveControlAPI::setFVars()
 }
 
 
+void ModelPredictiveControlAPI::setLinearConstraints()
+{
+    Eigen::Matrix<double, 2 * mpcWindow, N_C * mpcWindow> Gbar_temp;
+    Eigen::Matrix<double, mpcWindow, N_C * mpcWindow> Gbar_temp_upper;
+    Eigen::Matrix<double, mpcWindow, N_C * mpcWindow> Gbar_temp_lower;
 
+    Gbar_temp_upper = Eigen::Matrix<double, mpcWindow, N_C * mpcWindow>::Ones().triangularView<Eigen::Lower>();
+    Gbar_temp_lower = Eigen::Matrix<double, mpcWindow, N_C * mpcWindow>::Ones().triangularView<Eigen::Lower>();
 
+    // G = [tril(ones(N));-tril(ones(N))]*K(1);
+    // LL = Eigen::MatrixXd(Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow>::Ones().triangularView<Eigen::Lower>());
+    Gbar_temp << Gbar_temp_upper, Gbar_temp_lower*-K(0);
 
-// void ModelPredictiveControlAPI::setSbar()
-// {
-//     Sbar << S, -S;
+    // Eigen::Matrix<double, N_S, N_C> AiB;
+    // AiB = Eigen::Matrix<double, N_S, N_C>::Zero();
 
-//     if(verbose)
-//     {
-//         std::cout << "[MPC API]\tSbar created."   << std::endl;
-//         std::cout << "Sbar:" << std::endl << Sbar << std::endl  << std::endl;
-//     }
-// }
-
-
-// void ModelPredictiveControlAPI::setG()
-// {
-//     Eigen::Matrix<double, N_S, N_C> AiB;
-//     AiB = Eigen::Matrix<double, N_S, N_C>::Zero();
-
-//     Eigen::Matrix<double, N_S*mpcWindow, N_C> AB;
+    // Eigen::Matrix<double, N_S*mpcWindow, N_C> AB;
     
-//     for(int i; i<mpcWindow; i++)
-//     {
-//         AiB += Ad.pow(i) * Bd;
-//         AB.block<N_S, N_S>(i*N_S, 0) = AiB;
-//     }
+    // for(int i; i<mpcWindow; i++)
+    // {
+    //     AiB += Ad.pow(i) * Bd;
+    //     AB.block<N_S, N_S>(i*N_S, 0) = AiB;
+    // }
 
 
-//     for(int i=0; i<mpcWindow; i++)
-//     {
-//         for(int j=0; j<=i; j++)
-//         {
-//             G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB.block<N_S, N_S>(N_S*(i-j), 0)); 
-//         }
-//     }
+    // for(int i=0; i<mpcWindow; i++)
+    // {
+    //     for(int j=0; j<=i; j++)
+    //     {
+    //         G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB.block<N_S, N_S>(N_S*(i-j), 0)); 
+    //     }
+    // }
 
-//     if(verbose)
-//     {
-//         std::cout << "[MPC API]\tG created."   << std::endl;
-//         std::cout << "G:" << std::endl << G << std::endl  << std::endl;
-//     }
-// }
+    // Eigen::Matrix<double, 2*mpcWindow, N_C*mpcWindow> Gbar_temp;
+    // Gbar_temp << G, -G;
+
+    Gbar.resize(Gbar_temp.rows(), Gbar_temp.cols());
+
+    for(int i=0; i<Gbar_temp.rows(); i++)
+    {
+        for(int j=0; j<Gbar_temp.cols(); j++)
+        {
+            Gbar.insert(i,j) = Gbar_temp(i,j);
+        }
+    }
+
+    Gbar.makeCompressed();
 
 
-// void ModelPredictiveControlAPI::setGbar()
-// {
-//     Eigen::Matrix<double, 2*mpcWindow, N_C*mpcWindow> Gbar_temp;
-//     Gbar_temp << G, -G;
-//     Gbar.resize(2*mpcWindow, N_C*mpcWindow);
+    if(verbose)
+    {
+        std::cout << "[MPC API]\tLinear constraints matrix created."   << std::endl;
 
-//     for(int i=0; i<2*mpcWindow; i++)
-//     {
-//         for(int j=0; j<N_C*mpcWindow; j++)
-//         {
-//             Gbar.insert(i,j) = Gbar_temp(i,j);
-//         }
-//     }
+        // std::cout << "AiB rows: " << AiB.rows() << "\tFu cols: " << AiB.cols()  << std::endl;
+        // std::cout << "AiB:" << std::endl << AiB << std::endl  << std::endl;
 
-//     Gbar.makeCompressed();
+        // std::cout << "AB rows: " << AB.rows() << "\tFr cols: " << AB.cols()  << std::endl;
+        // std::cout << "AB:" << std::endl << AB << std::endl  << std::endl;
 
-//     if(verbose)
-//     {
-//         std::cout << "[MPC API]\tGbar created."   << std::endl;
-//         std::cout << "Gbar:" << std::endl << Gbar_temp << std::endl  << std::endl;
-//     }
-// }
+        std::cout << "G rows: " << G.rows() << "\tG cols: " << G.cols()  << std::endl;
+        std::cout << "G:" << std::endl << G << std::endl  << std::endl;
+
+        std::cout << "Gbar rows: " << Gbar_temp.rows() << "\tGbar cols: " << Gbar_temp.cols()  << std::endl;
+        std::cout << "Gbar:" << std::endl << Gbar_temp << std::endl  << std::endl;
+    }
+}
+
+
+void ModelPredictiveControlAPI::setUpperBound()
+{
+    Eigen::Matrix<double, mpcWindow, N_O> Ku_temp;
+
+    Ku_temp = Eigen::Matrix<double, mpcWindow, N_O>::Ones();
+
+    Ku << -Ku_temp, Ku_temp;
+}
 
 
 void ModelPredictiveControlAPI::setF()

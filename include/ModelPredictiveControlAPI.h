@@ -92,32 +92,27 @@ public:
     /**
      * Compute components for the qp gradient  
      */
-    void setFVars();    
-
-    /**
-     * Compute S
-     */
-    void setS();      
+    void setFVars();   
 
     /**
      * Compute Sbar
      */
-    void setSbar(); 
-
-    /**
-     * Compute G
-     */
-    void setG();
+    void setSbar();
 
     /**
      * Compute constraints components for the qp problem
      */
-    void setGbar();          
+    void setLinearConstraints();          
 
     /**
      * compute gradient for the qp problem
      */    
     void setF();
+
+    /**
+     * Calculates the upper bound matrices for the qp problem
+     */
+    void setUpperBound();
 
     /**
      * update the reference given the time
@@ -206,6 +201,7 @@ public:
     Eigen::Matrix<double, N_O, N_O>                     U;      // Control vector
     Eigen::Matrix<double, N_O, mpcWindow>               ref;    // Regerence vector
     Eigen::Matrix<double, 1, N_S>                       K;      // LQR feedback law
+    Eigen::Matrix<double, 2*mpcWindow, N_O>             Ku;     // K component of qp upper bound 
 
     // QP problem matrices and vectors
     Eigen::SparseMatrix<double>                         H;      // QP Hessian

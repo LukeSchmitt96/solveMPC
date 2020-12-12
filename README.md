@@ -51,7 +51,7 @@ git clone https://github.com/LukeSchmitt96/solveMPC.git
 ## Build solveMPC
 To build the project for the first time:
 ```bash
-cd [project-directory]
+cd solveMPC
 cmake .
 cmake --build ./
 ```
