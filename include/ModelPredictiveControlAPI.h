@@ -199,9 +199,10 @@ public:
     // state and the reference signal
     Eigen::Matrix<double, N_S, 1>                       X;      // State vector
     Eigen::Matrix<double, N_O, N_O>                     U;      // Control vector
-    Eigen::Matrix<double, N_O, mpcWindow>               ref;    // Regerence vector
+    Eigen::Matrix<double, N_O, mpcWindow>               ref;    // Reference vector
     Eigen::Matrix<double, 1, N_S>                       K;      // LQR feedback law
     Eigen::Matrix<double, 2*mpcWindow, N_O>             Ku;     // K component of qp upper bound 
+    double                                              xref;   // Reference position value
 
     // QP problem matrices and vectors
     Eigen::SparseMatrix<double>                         H;      // QP Hessian

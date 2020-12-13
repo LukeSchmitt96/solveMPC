@@ -12,16 +12,32 @@
 #include <unistd.h> // write(), read(), close()
 
 
-SerialPort::SerialPort(const char* port_name)
+SerialPort::SerialPort(bool verbose_)
 {
-    std::cout << "[SerialPort]\tAttempting connection to serial port "
-              << port_name
-              << "\"." << std::endl;
+    std::cout << "[SerialPort]\tSerial Port object created." << std::endl;
 
+    verbose = verbose_;
+
+    // get stream from config file and parse
+    std::ifstream file("./config/Serial_Port.json");
+    cfg = json::parse(file);
+
+    // get port name from cfg
+    port = cfg["port"].get<std::string>();
+
+    if(verbose)
+    {
+        std::cout << "[SerialPort]\tAttempting connection to serial port "
+                << port
+                << "\"." << std::endl;
+    }
+
+    // try to open the port
     int attempt = 0;
-    serial_port = open(port_name, O_RDWR);
+    serial_port = open(port.c_str(), O_RDWR);
     while(serial_port < 0) 
     {
+        // // stop trying after max_attempts
         // if(attempt>4)
         // {
         //     printf("[SerialPort]\t Could not open serial port after %d attempts. Check connection. Shutting down...",attempt);
@@ -30,12 +46,11 @@ SerialPort::SerialPort(const char* port_name)
 
         printf("[SerialPort]\tError %i from open: %s. Reattempting connection...\n", errno, strerror(errno));
         sleep(1);
-        serial_port = open(port_name, O_RDWR);
+        serial_port = open(port.c_str(), O_RDWR);
         attempt++;
     }
-    
+
     printf("[SerialPort]\tSerial port opened successfully.\n");
-    
      
     // Read in existing settings, and handle any error
     // NOTE: This is important! POSIX states that the struct passed to tcsetattr()
@@ -43,7 +58,7 @@ SerialPort::SerialPort(const char* port_name)
     // is undefined
     if(tcgetattr(serial_port, &tty) != 0)
     {
-        printf("Error %i from tcgetattr: %s", errno, strerror(errno));
+        printf("[SerialPort]\tError %i from tcgetattr: %s", errno, strerror(errno));
     }
 
     tty.c_cflag &= ~PARENB;         // Clear parity bit, disabling parity (most common)
@@ -66,9 +81,9 @@ SerialPort::SerialPort(const char* port_name)
     tty.c_cc[VTIME] = 30;   // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
     tty.c_cc[VMIN] = 30;
 
-    // Set in/out baud rate
-    cfsetispeed(&tty, B57600);
-    cfsetospeed(&tty, B57600);
+    // Set in/out baud rate. Settings in config file
+    cfsetispeed(&tty, get_baud(cfg["baud"].get<int>()));
+    cfsetospeed(&tty, get_baud(cfg["baud"].get<int>()));
 
     // Save tty settings, also checking for error
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) 
@@ -127,16 +142,15 @@ bool SerialPort::readPort(double            dt,
     memset(&read_buf, '\0', sizeof(read_buf));
     num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
 
-    // if (!(num_bytes < 0))
     if (num_bytes > 30)         // TODO: tune this number for best performance
     {
-        printf("\n[SerialPort]\tRead %i bytes. Received message: %s", num_bytes, read_buf);
+        if(verbose){printf("\n[SerialPort]\tRead %i bytes. Received message: %s", num_bytes, read_buf);}
         getDataFromSerial(dt, X, read_buf);
         return true;
     } 
     else
     {
-        printf("[SerialPort]\tBad serial read, reusing last control signal.\n");
+        if(verbose){printf("[SerialPort]\tBad serial read, reusing last control signal.\n");}
         return false;
     }
 }
@@ -152,4 +166,48 @@ void SerialPort::sendInit()
 {
     // char* boot_msg = "R";
     // write(serial_port, boot_msg, sizeof(boot_msg));
+}
+
+int SerialPort::get_baud(int baud)
+{
+    switch (baud) {
+    case 9600:
+        return B9600;
+    case 19200:
+        return B19200;
+    case 38400:
+        return B38400;
+    case 57600:
+        return B57600;
+    case 115200:
+        return B115200;
+    case 230400:
+        return B230400;
+    case 460800:
+        return B460800;
+    case 500000:
+        return B500000;
+    case 576000:
+        return B576000;
+    case 921600:
+        return B921600;
+    case 1000000:
+        return B1000000;
+    case 1152000:
+        return B1152000;
+    case 1500000:
+        return B1500000;
+    case 2000000:
+        return B2000000;
+    case 2500000:
+        return B2500000;
+    case 3000000:
+        return B3000000;
+    case 3500000:
+        return B3500000;
+    case 4000000:
+        return B4000000;
+    default: 
+        return -1;
+    }
 }

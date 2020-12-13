@@ -8,29 +8,23 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     verbose = verbose_;
     solverFlag = true;
 
-
-
-
+    // get stream from config file and parse
     std::ifstream file("./config/MPC_API.json");
     cfg = json::parse(file);
 
+    // set K from cfg
     K = from_json(cfg["K"], K.rows(), K.cols());
 
-    W0 = 255.0 * Eigen::Matrix<double, 2*mpcWindow, 1>::Ones();
+    // set xref from cfg
+    xref = cfg["xref"].get<double>();
 
-    // set arbitraty (to be filled) variables
+    // set arbitraty/to be filled variables
     X << 0.0, 0.0, 0.0, 0.0;
     U << 0.0;
-    ref = Eigen::Matrix<double, N_O, mpcWindow>::Zero();
-    lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
     t0 = 0.0;
     dt = 0.0;
 
-
-    /** some of the following functions are commented out
-     *      because we are not constraining the output right now
-    */
-
+    // set the matrices neccessary to solve the qp problem
     setSystemVars();
     setCosts();
     setLiftedCosts();
@@ -41,9 +35,10 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     setFVars();
     setLinearConstraints();
     setUpperBound();
-    updateRef(10.0);
+    updateRef(xref);        // assumes constant reference
     setF();
 
+    // lb will be constant as our problem constraints are formulated as Ax <= b
     lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
     ub = W0 + Sbar*X + Ku*U;
 
@@ -51,7 +46,6 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
 
     n_variables = N_O*mpcWindow;
     n_constraints = 2*mpcWindow;
-
 
     // solver settings
     solver.settings()->setVerbosity(verbose);
@@ -63,46 +57,14 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
 
     lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
 
-
-    // this sets the qp problem as unconstrained!!
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-    
-    // lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
-    // ub = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -Eigen::Infinity;
-    // Eigen::Matrix<double, 2*mpcWindow, N_S> Gbar_temp = Eigen::Matrix<double, 2*mpcWindow, N_S>::Zero();
-
-    // Gbar.resize(2*mpcWindow, N_C*mpcWindow);
-    // for(int i = 0; i<Gbar_temp.rows(); i++)
-    // {
-    //     for(int j=0; j<Gbar_temp.cols(); j++)
-    //     {
-    //         Gbar.insert(i,j) = Gbar_temp(i,j);
-    //     }
-    // }
-    // Gbar.makeCompressed();
-
-    // if(!solver.data()->setLinearConstraintsMatrix(Gbar))    {solverFlag = false; return;};
-    // if(!solver.data()->setLowerBound(lb))                   {solverFlag = false; return;};
-    // if(!solver.data()->setUpperBound(ub))                   {solverFlag = false; return;};
-
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-    // TEMPORARY REMOVE THIS IN FINAL CODE --------------------------------------------------------
-
-    std::cout << Gbar.rows() << " " << Gbar.cols() << std::endl;
-    std::cout << n_constraints << " " << n_variables << std::endl;
-
-
     if(!solver.data()->setHessianMatrix(H))                 {solverFlag = false; return;};
     if(!solver.data()->setGradient(f))                      {solverFlag = false; return;};
     if(!solver.data()->setLinearConstraintsMatrix(Gbar))    {solverFlag = false; return;};
     if(!solver.data()->setLowerBound(lb))                   {solverFlag = false; return;};
     if(!solver.data()->setUpperBound(ub))                   {solverFlag = false; return;};
 
-
     // instantiate the solver
     if(!solver.initSolver()){solverFlag = false; return;};
-
 }
 
 
@@ -124,8 +86,8 @@ bool ModelPredictiveControlAPI::controllerStep()
     // update time vector
     t0 += dt;
 
-    // recalculate reference (for now just hold at 10.0)
-    updateRef(10.0);
+    // recalculate reference (for now just hold at xref)
+    updateRef(xref);
 
     // calculate new F based on ref, U and X
     setF();
@@ -309,7 +271,6 @@ void ModelPredictiveControlAPI::setH()
         std::cout << "H rows: " << H_temp_1.rows() << "\tH cols: " << H_temp_1.cols()  << std::endl;
         std::cout << "H:" << std::endl << H_temp_1 << std::endl  << std::endl;
     }
-    
 }
 
 
@@ -317,7 +278,6 @@ void ModelPredictiveControlAPI::setLu()
 {
     for(int i=0; i<mpcWindow; i++)
     {
-        // TODO: Ask Z about this
         Lu.block<N_C,N_C>(i,0) = (mpcWindow-i+2)*Eigen::Matrix<double,N_C,N_C>::Identity();
     }
 
@@ -442,21 +402,22 @@ void ModelPredictiveControlAPI::setUpperBound()
     Ku_temp = Eigen::Matrix<double, mpcWindow, N_O>::Ones();
 
     Ku << -Ku_temp, Ku_temp;
+
+    W0 = 255.0 * Eigen::Matrix<double, 2*mpcWindow, 1>::Ones();
 }
 
 
 void ModelPredictiveControlAPI::setF()
 {
-
     f = Fx*X + Fu*U + Fr*ref.transpose();
 
-    if(verbose)
-    {
-        std::cout << "[MPC API]\tf created."   << std::endl;
+    // if(verbose)
+    // {
+    //     std::cout << "[MPC API]\tf created."   << std::endl;
 
-        std::cout << "f rows: " << f.rows() << "\tf cols: " << f.cols()  << std::endl;
-        std::cout << "f:" << std::endl << f << std::endl  << std::endl;
-    }
+    //     std::cout << "f rows: " << f.rows() << "\tf cols: " << f.cols()  << std::endl;
+    //     std::cout << "f:" << std::endl << f << std::endl  << std::endl;
+    // }
 }
 
 
@@ -585,10 +546,7 @@ Eigen::Matrix<double, 1, mpcWindow> ModelPredictiveControlAPI::linspace(double s
     for(int i=0; i < num; ++i)
     {
         linspaced(0,i) = start + delta * i;
-    }
-    //linspaced(0,num-1) = end;   // I want to ensure that start and end
-                                // are exactly the same as the input
-        
+    }        
     return linspaced;
 }
 

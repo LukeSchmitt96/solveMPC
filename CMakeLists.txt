@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 add_definitions     ( ${EIGEN3_DEFINITIONS} )
 include_directories ( ${EIGEN3_INCLUDE_DIRS} )
 
-project(solveMPC.cpp)
+project(solver.cpp)
 
 find_package(OsqpEigen REQUIRED)
 find_package(Eigen3)
@@ -23,14 +23,14 @@ add_compile_options(
     -DEIGEN_STACK_ALLOCATION_LIMIT=0
 )
 
-#solveMPC.cpp
+#solver.cpp
 add_executable(
-    solveMPC.cpp 
-    src/solveMPC.cpp 
+    solver.cpp 
+    src/solver.cpp 
     src/ModelPredictiveControlAPI.cpp 
     include/ModelPredictiveControlAPI.h
     src/SerialPort.cpp
     include/SerialPort.h
 )
 
-target_link_libraries(solveMPC.cpp OsqpEigen::OsqpEigen)
+target_link_libraries(solver.cpp OsqpEigen::OsqpEigen)

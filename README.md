@@ -44,7 +44,7 @@ cd ~
 git clone https://github.com/LukeSchmitt96/solveMPC.git
 ```
 
-## Build solveMPC
+## Building the solver
 To build the project for the first time:
 ```bash
 cd solveMPC
@@ -59,17 +59,21 @@ cmake --build ./
 
 To start solver, run the following command in the project directory:
 ```bash
-./solveMPC.cpp
+./solver.cpp
 ```
 
 Note that you may need to run it once or twice before it 'takes'.
 
-Note that you can set a verbose output by adding a true or false flag to the command line statement. It is set to `false` by default. A verbose output will output information like the QP problem matrices, the messages read from serial, the solution to the QP problem, etc.
+Note that you can set a verbose output by setting the command flag `-v`. Verbose output is turned off by default. A verbose output will output information like the QP problem matrices, the messages read from serial, the solution to the QP problem, etc.
 ```bash
-./solveMPC true   #or false
+./solver.cpp -v
 ```
 
-To check which serial port on PI is connected to Arduino, run the following command and update solveMPC.cpp accordingly
+## Configuring the solver
+
+To edit settings like position reference and serial port name, check the configuration files.
+
+To check which serial port the Pi connects to Arduino through, run the following command and update the Serial Port config file accordingly.
 ```bash
 dmesg | grep tty
 ```

@@ -9,19 +9,30 @@
 
 #include "ModelPredictiveControlAPI.h"
 
+// eigen and eigen helpers
 #include <Eigen/Dense>
+
+// json api
+#include <nlohmann/json.hpp>
 
 class SerialPort
 {
 public:
     /** constructor
      * 
-     * @param port_name     name of port to open for serial communication
+     * @param verbose     sets verbose output mode
      */
-    SerialPort(const char*);
+    SerialPort(bool);
 
     // destructor
     ~SerialPort();
+
+    /**
+     * converts serial baudrate from config
+     * 
+     * @param baud value from config
+     */
+    int get_baud(int);
 
     /**
      * read data from a serial connection
@@ -60,6 +71,8 @@ public:
      * send init byte to arduino
      */
     void sendInit();
+    
+    bool verbose;
 
     int serial_port;
     struct termios tty;
@@ -68,4 +81,8 @@ public:
     int num_bytes; 
     char read_buf [42];
 
+    // config variables
+    nlohmann::json cfg;
+
+    std::string port;
 };
