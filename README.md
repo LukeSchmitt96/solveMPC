@@ -2,7 +2,7 @@
 The required dependencies are:
 - [cmake](https://cmake.org/install/)
 - [osqp](http://osqp.readthedocs.io/en/latest/index.html)
-- Eigen3 is already included in this repo and since it only includes header files, we don't need to build it.
+- [Eigen3](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 
 ## Get cmake:
 ```bash
