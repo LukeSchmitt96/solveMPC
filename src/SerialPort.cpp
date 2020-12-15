@@ -127,7 +127,7 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
         ptr = strtok(NULL, " ");  // takes a list of delimiters
     }
     
-    std::cout << ref[0] << " " << ref[1] << " " << ref[2] << " " << ref[3] << " " << ref[4] << std::endl;
+    // std::cout << ref[0] << " " << ref[1] << " " << ref[2] << " " << ref[3] << " " << ref[4] << std::endl;
 
     dt   = ref[0];
 

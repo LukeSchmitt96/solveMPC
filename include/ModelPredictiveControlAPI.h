@@ -22,9 +22,11 @@
 /* ----------------- Parameters and Helpers ------------------- */
 /* ------------------------------------------------------------ */
 
+// TODO(@Luke): add this to config
 const int mpcWindow = 10;           // MPC preview window
 
 // set matrix dimensions
+
 const int N_S = 4;                  // number of states
 const int N_C = 1;                  // number of controls
 const int N_O = 1;                  // number of outputs
