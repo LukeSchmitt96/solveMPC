@@ -39,7 +39,8 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     setF();
 
     // lb will be constant as our problem constraints are formulated as Ax <= b
-    lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+    // lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
+    lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -std::numeric_limits<double>::max();
     ub = W0 + Sbar*X + Ku*U;
 
     std::cout << "[MPC API]\tAll QP matrices built successfully." << std::endl;
@@ -54,8 +55,6 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
 
     solver.data()->setNumberOfVariables(n_variables);
     solver.data()->setNumberOfConstraints(n_constraints);
-
-    lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
 
     if(!solver.data()->setHessianMatrix(H))                 {solverFlag = false; return;};
     if(!solver.data()->setGradient(f))                      {solverFlag = false; return;};
@@ -105,7 +104,7 @@ bool ModelPredictiveControlAPI::controllerStep()
     if(!solver.solve()) return false;
 
     // get the next controller input
-    U += solver.getSolution().block<N_C, 1>(0, 0);
+    U = -solver.getSolution().block<N_C, 1>(0, 0);
 
     return true;
 }
@@ -338,7 +337,7 @@ void ModelPredictiveControlAPI::setLinearConstraints()
 
     // G = [tril(ones(N));-tril(ones(N))]*K(1);
     // LL = Eigen::MatrixXd(Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow>::Ones().triangularView<Eigen::Lower>());
-    Gbar_temp << Gbar_temp_upper, Gbar_temp_lower*-K(0);
+    Gbar_temp << Gbar_temp_upper*K(0), Gbar_temp_lower*-K(0);
 
     // Eigen::Matrix<double, N_S, N_C> AiB;
     // AiB = Eigen::Matrix<double, N_S, N_C>::Zero();
@@ -386,8 +385,8 @@ void ModelPredictiveControlAPI::setLinearConstraints()
         // std::cout << "AB rows: " << AB.rows() << "\tFr cols: " << AB.cols()  << std::endl;
         // std::cout << "AB:" << std::endl << AB << std::endl  << std::endl;
 
-        std::cout << "G rows: " << G.rows() << "\tG cols: " << G.cols()  << std::endl;
-        std::cout << "G:" << std::endl << G << std::endl  << std::endl;
+        // std::cout << "G rows: " << G.rows() << "\tG cols: " << G.cols()  << std::endl;
+        // std::cout << "G:" << std::endl << G << std::endl  << std::endl;
 
         std::cout << "Gbar rows: " << Gbar_temp.rows() << "\tGbar cols: " << Gbar_temp.cols()  << std::endl;
         std::cout << "Gbar:" << std::endl << Gbar_temp << std::endl  << std::endl;

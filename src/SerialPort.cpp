@@ -127,6 +127,8 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
         ptr = strtok(NULL, " ");  // takes a list of delimiters
     }
     
+    std::cout << ref[0] << " " << ref[1] << " " << ref[2] << " " << ref[3] << " " << ref[4] << std::endl;
+
     dt   = ref[0];
 
     X(0) = ref[1];
@@ -158,7 +160,8 @@ bool SerialPort::readPort(double            dt,
 
 void SerialPort::writePort(Eigen::MatrixXd data_send)
 {
-    write(serial_port, data_send.data(), sizeof(data_send));
+    // write(serial_port, data_send.data(), sizeof(data_send));
+    write(serial_port, std::to_string(data_send(0)).c_str(), sizeof(std::to_string(data_send(0)).c_str()));
 }
 
 

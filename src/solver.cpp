@@ -40,7 +40,6 @@ int main(int argc, char** argv)
     std::cout << "----------------------------------------------------" << std::endl;
     std::cout << std::endl;
 
-
     while(true)
     {
         if(sp.readPort(mpc.dt, mpc.X))  // check for valid message
@@ -54,11 +53,11 @@ int main(int argc, char** argv)
             if(mpc.verbose)
             {
                 std::cout << "[solveMPC]\t" << "Current state: " << mpc.X.transpose() << std::endl;
-                std::cout << "[solveMPC]\t" << "Control output: " << -mpc.U.transpose() << std::endl;
+                std::cout << "[solveMPC]\t" << "Control output: " << mpc.U.transpose() << std::endl;
             }
             
             // send control signal to controller
-            sp.writePort(-mpc.U);
+            sp.writePort(mpc.U);
 
             // iterate step count
             count++;
@@ -70,7 +69,7 @@ int main(int argc, char** argv)
         else
         {
             // send last control signal to controller if we got a bad reading
-            sp.writePort(-mpc.U);
+            sp.writePort(mpc.U);
         }
     }
 
