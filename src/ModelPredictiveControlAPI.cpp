@@ -398,7 +398,7 @@ void ModelPredictiveControlAPI::setUpperBound()
 {
     Eigen::Matrix<double, mpcWindow, N_O> Ku_temp;
 
-    Ku_temp = Eigen::Matrix<double, mpcWindow, N_O>::Ones();
+    Ku_temp = Eigen::Matrix<double, mpcWindow, N_O>::Ones()*K(0);
 
     Ku << -Ku_temp, Ku_temp;
 
