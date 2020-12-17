@@ -152,7 +152,7 @@ bool SerialPort::readPort(double            dt,
     } 
     else
     {
-        if(verbose){printf("[SerialPort]\tBad serial read, reusing last control signal.\n");}
+        // if(verbose){printf("[SerialPort]\tBad serial read, reusing last control signal.\n");}
         return false;
     }
 }

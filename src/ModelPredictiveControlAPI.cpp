@@ -51,7 +51,7 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     // solver settings
     solver.settings()->setVerbosity(verbose);
     solver.settings()->setWarmStart(true);
-    solver.settings()->setTimeLimit(0.08);
+    // solver.settings()->setTimeLimit(0.08);
 
     solver.data()->setNumberOfVariables(n_variables);
     solver.data()->setNumberOfConstraints(n_constraints);
@@ -104,7 +104,7 @@ bool ModelPredictiveControlAPI::controllerStep()
     if(!solver.solve()) return false;
 
     // get the next controller input
-    U = -solver.getSolution().block<N_C, 1>(0, 0);
+    U = solver.getSolution().block<N_C, 1>(0, 0);
 
     return true;
 }
