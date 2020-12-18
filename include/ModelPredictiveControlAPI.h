@@ -23,7 +23,7 @@
 /* ------------------------------------------------------------ */
 
 // TODO(@Luke): add this to config
-const int mpcWindow = 10;           // MPC preview window
+const int mpcWindow = 15;           // MPC preview window
 
 // set matrix dimensions
 

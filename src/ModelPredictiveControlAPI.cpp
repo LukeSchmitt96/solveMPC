@@ -104,7 +104,7 @@ bool ModelPredictiveControlAPI::controllerStep()
     if(!solver.solve()) return false;
 
     // get the next controller input
-    U = solver.getSolution().block<N_C, 1>(0, 0);
+    U += solver.getSolution().block<N_C, 1>(0, 0);
 
     return true;
 }
