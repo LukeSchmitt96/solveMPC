@@ -52,6 +52,9 @@ SerialPort::SerialPort(bool verbose_)
 
     printf("[SerialPort]\tSerial port opened successfully.\n");
      
+    // much of the following was taken from the guide "Linux Serial Ports Using C/C++" found at
+    //      https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/#overview
+
     // Read in existing settings, and handle any error
     // NOTE: This is important! POSIX states that the struct passed to tcsetattr()
     // must have been initialized with a call to tcgetattr() overwise behaviour
@@ -127,8 +130,6 @@ void SerialPort::getDataFromSerial(double &dt, Eigen::Matrix<double, N_S, 1> &X,
         ptr = strtok(NULL, " ");  // takes a list of delimiters
     }
     
-    // std::cout << ref[0] << " " << ref[1] << " " << ref[2] << " " << ref[3] << " " << ref[4] << std::endl;
-
     dt   = ref[0];
 
     X(0) = ref[1];
@@ -167,8 +168,7 @@ void SerialPort::writePort(Eigen::MatrixXd data_send)
 
 void SerialPort::sendInit()
 {
-    // char* boot_msg = "R";
-    // write(serial_port, boot_msg, sizeof(boot_msg));
+    
 }
 
 int SerialPort::get_baud(int baud)

@@ -22,7 +22,7 @@
 /* ----------------- Parameters and Helpers ------------------- */
 /* ------------------------------------------------------------ */
 
-// TODO(@Luke): add this to config
+// TODO(@Luke): add this to config?
 const int mpcWindow = 15;           // MPC preview window
 
 // set matrix dimensions
@@ -131,23 +131,7 @@ public:
     /**
      * set Lu matrix
      */
-    void setLu();               
-
-    /**
-     * linearizes nonlinear model into a linear model about X
-     * 
-     * @param ts        sampling time
-     * 
-     * @param U_LQR     control from LQR
-     */
-    void linearizeABCD(double ts, double U_LQR);
-
-    /**
-     * converts a continuous time system to discrete time
-     * 
-     * @param ts        sampling time
-     */
-    void c2d(double ts);
+    void setLu();
 
     /**
      * performs a controller step by solving the qp problem

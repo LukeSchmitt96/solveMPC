@@ -39,7 +39,6 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     setF();
 
     // lb will be constant as our problem constraints are formulated as Ax <= b
-    // lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * Eigen::Infinity;
     lb = Eigen::Matrix<double, 2*mpcWindow, 1>::Ones() * -std::numeric_limits<double>::max();
     ub = W0 + Sbar*X + Ku*U;
 
@@ -51,7 +50,6 @@ ModelPredictiveControlAPI::ModelPredictiveControlAPI(bool verbose_)
     // solver settings
     solver.settings()->setVerbosity(verbose);
     solver.settings()->setWarmStart(true);
-    // solver.settings()->setTimeLimit(0.08);
 
     solver.data()->setNumberOfVariables(n_variables);
     solver.data()->setNumberOfConstraints(n_constraints);
@@ -305,7 +303,6 @@ void ModelPredictiveControlAPI:: setLL()
 void ModelPredictiveControlAPI::setFVars()
 {
     Fu = 2*((LL.transpose() * Rbar.transpose()).diagonal().transpose() + Su1.transpose() * Qbar * Su).transpose();
-    // Fu = 2*((LL.transpose() * Rbar.transpose()).transpose() + Su1.transpose() * Qbar * Su).transpose();
     Fr = -2*(Qbar*Su).transpose();
     Fx = 2*(Sx.transpose() * Qbar * Su).transpose();
 
@@ -335,32 +332,7 @@ void ModelPredictiveControlAPI::setLinearConstraints()
     Gbar_temp_upper = Eigen::Matrix<double, mpcWindow, N_C * mpcWindow>::Ones().triangularView<Eigen::Lower>();
     Gbar_temp_lower = Eigen::Matrix<double, mpcWindow, N_C * mpcWindow>::Ones().triangularView<Eigen::Lower>();
 
-    // G = [tril(ones(N));-tril(ones(N))]*K(1);
-    // LL = Eigen::MatrixXd(Eigen::Matrix<double, N_O*mpcWindow, N_O*mpcWindow>::Ones().triangularView<Eigen::Lower>());
     Gbar_temp << Gbar_temp_upper*K(0), Gbar_temp_lower*-K(0);
-
-    // Eigen::Matrix<double, N_S, N_C> AiB;
-    // AiB = Eigen::Matrix<double, N_S, N_C>::Zero();
-
-    // Eigen::Matrix<double, N_S*mpcWindow, N_C> AB;
-    
-    // for(int i; i<mpcWindow; i++)
-    // {
-    //     AiB += Ad.pow(i) * Bd;
-    //     AB.block<N_S, N_S>(i*N_S, 0) = AiB;
-    // }
-
-
-    // for(int i=0; i<mpcWindow; i++)
-    // {
-    //     for(int j=0; j<=i; j++)
-    //     {
-    //         G.block<1,N_S>(i*N_S, 4*j-3) = -K*(Eigen::Matrix<double, N_S, N_S>::Identity() - AB.block<N_S, N_S>(N_S*(i-j), 0)); 
-    //     }
-    // }
-
-    // Eigen::Matrix<double, 2*mpcWindow, N_C*mpcWindow> Gbar_temp;
-    // Gbar_temp << G, -G;
 
     Gbar.resize(Gbar_temp.rows(), Gbar_temp.cols());
 
@@ -378,15 +350,6 @@ void ModelPredictiveControlAPI::setLinearConstraints()
     if(verbose)
     {
         std::cout << "[MPC API]\tLinear constraints matrix created."   << std::endl;
-
-        // std::cout << "AiB rows: " << AiB.rows() << "\tFu cols: " << AiB.cols()  << std::endl;
-        // std::cout << "AiB:" << std::endl << AiB << std::endl  << std::endl;
-
-        // std::cout << "AB rows: " << AB.rows() << "\tFr cols: " << AB.cols()  << std::endl;
-        // std::cout << "AB:" << std::endl << AB << std::endl  << std::endl;
-
-        // std::cout << "G rows: " << G.rows() << "\tG cols: " << G.cols()  << std::endl;
-        // std::cout << "G:" << std::endl << G << std::endl  << std::endl;
 
         std::cout << "Gbar rows: " << Gbar_temp.rows() << "\tGbar cols: " << Gbar_temp.cols()  << std::endl;
         std::cout << "Gbar:" << std::endl << Gbar_temp << std::endl  << std::endl;
@@ -409,37 +372,11 @@ void ModelPredictiveControlAPI::setUpperBound()
 void ModelPredictiveControlAPI::setF()
 {
     f = Fx*X + Fu*U + Fr*ref.transpose();
-
-    // if(verbose)
-    // {
-    //     std::cout << "[MPC API]\tf created."   << std::endl;
-
-    //     std::cout << "f rows: " << f.rows() << "\tf cols: " << f.cols()  << std::endl;
-    //     std::cout << "f:" << std::endl << f << std::endl  << std::endl;
-    // }
 }
 
 
 void ModelPredictiveControlAPI::updateRef(double pos_ref)
 {
-    // t = linspace(t0, t0 + dt/1000.0*(mpcWindow-1), mpcWindow);
-    // ref = Eigen::Matrix<double, N_C, mpcWindow>::Zero();
-
-    // Eigen::Matrix<double, 1, mpcWindow> ref_position;
-    // Eigen::Matrix<double, 1, mpcWindow> temp;
-    
-    // temp = t.unaryExpr([](const double x) 
-    //     { 
-    //         return fmod(x/(Ts/2),2);
-    //     }
-    // );
-
-    // ref_position = temp.unaryExpr([](const double x)
-    //     {
-    //         return x <= 1.0 ? 1.0 : 0.0;
-    //     }
-    // );
-
     ref.block<1,mpcWindow>(0,0) = pos_ref * Eigen::Matrix<double, N_C, mpcWindow>::Ones();
 
     if(verbose)
@@ -448,77 +385,6 @@ void ModelPredictiveControlAPI::updateRef(double pos_ref)
     }
 }
 
-
-void ModelPredictiveControlAPI::linearizeABCD(double ts,
-                                              double U_LQR)
-{
-    double sinx3 = sin(X(2));
-    double cosx3 = cos(X(2));
-    
-    Eigen::Vector4d va4;
-    va4(0) = 0.;
-    va4(1) = cosx3/(0.80128205128*cosx3*cosx3 - 0.2086653922);
-    va4(2) = (0.0989561664*cosx3 - 0.0001557504*X(3)*X(3)*cosx3*cosx3 + sinx3*(0.0001557504*sinx3*X(3)*X(3) 
-            - 0.00026676593*U_LQR + 0.0001248*X(1)))/(0.0001557504*cosx3*cosx3 - 0.00059808672) 
-            - (5746175536355785.*cosx3*sinx3*(0.0989561664*sinx3 - cosx3*(0.0001557504*sinx3*X(3)*X(3) 
-            - 0.00026676593*U_LQR + 0.0001248*X(1))))/(18446744073709551616.*pow(0.0001557504*cosx3*cosx3 - 0.00059808672,2));
-    va4(3) = (X(3)*cosx3*sinx3)/(2*cosx3*cosx3 - 0.52082881893);
-    
-    Eigen::Vector4d va2;
-    va2(0) = 0.;
-    va2(1) = 136358332192861.0/(18446744073709551616.0*(0.0001557504*cosx3*cosx3 - 0.00059808672));
-    va2(2) = - (3125.*((1911.*cosx3)/15625. + (3408958304821525.*(0.0989561664*cosx3 
-                - 0.0001557504*X(3)*X(3)*cosx3*cosx3 + sinx3*(0.0001557504*sinx3*X(3)*X(3) - 0.00026676593*U_LQR 
-                + (39.0*X(1))/312500.)))/(7.1827194e+14*cosx3*cosx3 - 2.7581882e+15) 
-                + (19588472815622334031693326272125.*cosx3*sinx3*(0.0989561664*sinx3 
-                - cosx3*((1521.0*sinx3*pow(X(3),2))/9765625. - 0.00026676593*U_LQR 
-                + 0.0001248*X(1))))/(85070591730234615865843651857942052864.*pow(0.0001557504*cosx3*cosx3 
-                - 0.00059808672,2))))/(39.*cosx3) - (3125.*sinx3*((1911.*sinx3)/15625. 
-                + (3408958304821525.*(0.0989561664*sinx3 - cosx3*((1521.0*sinx3*pow(X(3),2))/9765625.0 
-                - 0.00026676593*U_LQR + 0.0001248*X(1))))/(7.1827194e+14*cosx3*cosx3 - 2.7581882e+15)))/(39.*cosx3*cosx3);
-    va2(3) = (X(3)*sinx3)/(0.11846153945*cosx3*cosx3 - 0.03084909163);
-
-    double va4_u = -cosx3/(1.71277846634*cosx3*cosx3 - 0.44603219682);
-    double va2_u = -1/(0.101449188*cosx3*cosx3 - 0.02641883125);
-
-}
-
-// void ModelPredictiveControlAPI::c2d(double                                                 ts,
-//                                     Eigen::Matrix<double, N_S, N_S>                        &Ad,
-//                                     Eigen::Matrix<double, N_S, 1>                          &Bd,
-//                                     Eigen::Matrix<double, N_O, N_S>                        &Cd,
-//                                     Eigen::Matrix<double, N_O, 1>                          &Dd,
-//                                     Eigen::Matrix<double, N_S, N_S>                        A,
-//                                     Eigen::Matrix<double, N_S, 1>                          B,
-//                                     Eigen::Matrix<double, N_O, N_S>                        C,
-//                                     Eigen::Matrix<double, N_O, 1>                          D)
-// {
-//     // build an exponential matrix
-//     Eigen::Matrix<double, N_S, N_S + 1> em_upper;
-//     em_upper << A, B;
-
-//     // Need to stack zeros under the a and b matrices
-//     Eigen::Matrix<double, N_S, N_S + 1> em_lower;
-//     em_lower << Eigen::Matrix4d::Zero((B.rows(), A.rows())), Eigen::Matrix4d::Zero((B.rows(), B.rows()));
-
-//     Eigen::MatrixXd em;
-//     em << em_upper, 
-//           em_lower;
-    
-//     // do zoh
-//     Eigen::MatrixXd ms_temp;
-//     ms_temp << linalg.expm(dt * em);
-
-//     // Dispose of the lower rows
-//     Eigen::MatrixXd ms;
-//     ms = ms_temp[:A.shape[0], :];
-
-//     Ad = ms[:, 0:A.shape[1]];
-//     Bd = ms[:, A.shape[1]:];
-
-//     Cd = C;
-//     Dd = D;
-// }
 
 Eigen::MatrixXd ModelPredictiveControlAPI::blkdiag(const Eigen::MatrixXd& a, int count)
 {
